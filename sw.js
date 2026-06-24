@@ -1,5 +1,5 @@
 // Service Worker — התנהלות שוטפת - שיאים
-const CACHE_NAME = 'shiaim-v1';
+const CACHE_NAME = 'shiaim-v2';
 const ASSETS = [
   './index.html',
   './app.css',
