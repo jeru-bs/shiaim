@@ -332,7 +332,7 @@ function renderAll() {
   renderHeader();
   renderProjectList();
   updateChangesBadge();
-  updateFiltersBtn();
+  updateFilterDropdowns();
   saveToCache();
 }
 
@@ -1197,61 +1197,39 @@ function showSpinner(show) {
 // ================================================================
 // FILTERS
 // ================================================================
-function openFiltersModal() {
+function updateFilterDropdowns() {
   // Populate status options
-  const fmStatus = document.getElementById('fm-status');
-  fmStatus.innerHTML = '<option value="">הכל</option>' +
-    S.statuses.map(s => `<option value="${escHtml(s)}" ${s === S.filters.status ? 'selected' : ''}>${escHtml(s)}</option>`).join('');
+  const statusSel = document.getElementById('filter-status');
+  const curStatus = S.filters.status;
+  statusSel.innerHTML = '<option value="">כל הסטטוסים</option>' +
+    S.statuses.map(s => `<option value="${escHtml(s)}" ${s === curStatus ? 'selected' : ''}>${escHtml(s)}</option>`).join('');
 
   // Populate client options
   const clients = [...new Set(S.projects.map(p => p.client).filter(Boolean))].sort();
-  const fmClient = document.getElementById('fm-client');
-  fmClient.innerHTML = '<option value="">הכל</option>' +
-    clients.map(c => `<option value="${escHtml(c)}" ${c === S.filters.client ? 'selected' : ''}>${escHtml(c)}</option>`).join('');
-
-  // Set current values
-  document.getElementById('fm-type').value     = S.filters.type;
-  document.getElementById('fm-priority').value = S.filters.priority;
-  document.getElementById('fm-deadline').value = S.filters.deadline;
-
-  openModalEl(document.getElementById('filters-modal'));
-}
-
-function applyFiltersFromModal() {
-  S.filters.type     = document.getElementById('fm-type').value;
-  S.filters.status   = document.getElementById('fm-status').value;
-  S.filters.priority = document.getElementById('fm-priority').value;
-  S.filters.client   = document.getElementById('fm-client').value;
-  S.filters.deadline = document.getElementById('fm-deadline').value;
-  closeModalEl(document.getElementById('filters-modal'));
-  renderProjectList();
-  updateFiltersBtn();
+  const clientSel = document.getElementById('filter-client');
+  const curClient = S.filters.client;
+  clientSel.innerHTML = '<option value="">כל הלקוחות</option>' +
+    clients.map(c => `<option value="${escHtml(c)}" ${c === curClient ? 'selected' : ''}>${escHtml(c)}</option>`).join('');
 }
 
 function clearFilters() {
-  document.getElementById('filter-search').value = '';
+  document.getElementById('filter-search').value   = '';
+  document.getElementById('filter-type').value     = '';
+  document.getElementById('filter-status').value   = '';
+  document.getElementById('filter-priority').value = '';
+  document.getElementById('filter-client').value   = '';
+  document.getElementById('filter-deadline').value = '';
   S.filters = { search: '', type: '', status: '', priority: '', client: '', deadline: '' };
-  closeModalEl(document.getElementById('filters-modal'));
   renderProjectList();
-  updateFiltersBtn();
-}
-
-function updateFiltersBtn() {
-  const active = Object.entries(S.filters).filter(([k,v]) => k !== 'search' && v).length;
-  const countEl = document.getElementById('filters-count');
-  const btn = document.getElementById('filters-btn');
-  if (active > 0) {
-    countEl.textContent = active;
-    countEl.classList.remove('hidden');
-    btn.classList.add('active');
-  } else {
-    countEl.classList.add('hidden');
-    btn.classList.remove('active');
-  }
 }
 
 function applyFilters() {
-  S.filters.search = document.getElementById('filter-search').value;
+  S.filters.search   = document.getElementById('filter-search').value;
+  S.filters.type     = document.getElementById('filter-type').value;
+  S.filters.status   = document.getElementById('filter-status').value;
+  S.filters.priority = document.getElementById('filter-priority').value;
+  S.filters.client   = document.getElementById('filter-client').value;
+  S.filters.deadline = document.getElementById('filter-deadline').value;
   renderProjectList();
 }
 
@@ -1299,9 +1277,12 @@ function wireEvents() {
 
   // Filters
   document.getElementById('filter-search').addEventListener('input', applyFilters);
-  document.getElementById('filters-btn').addEventListener('click', openFiltersModal);
-  document.getElementById('btn-apply-filters').addEventListener('click', applyFiltersFromModal);
-  document.getElementById('btn-clear-filters-modal').addEventListener('click', clearFilters);
+  document.getElementById('filter-type').addEventListener('change', applyFilters);
+  document.getElementById('filter-status').addEventListener('change', applyFilters);
+  document.getElementById('filter-priority').addEventListener('change', applyFilters);
+  document.getElementById('filter-client').addEventListener('change', applyFilters);
+  document.getElementById('filter-deadline').addEventListener('change', applyFilters);
+  document.getElementById('clear-filters').addEventListener('click', clearFilters);
 
   // Project panel buttons
   document.getElementById('btn-complete-project').addEventListener('click', () =>

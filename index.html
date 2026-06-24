@@ -97,22 +97,35 @@
   </div>
 
   <!-- Filters -->
-  <!-- Search + Filter bar -->
   <div class="filters-bar">
     <input type="search" id="filter-search" class="filter-search" placeholder="🔍 חיפוש..." />
-    <button id="filters-btn" class="btn-filters">
-      <span>פילטרים</span>
-      <span id="filters-count" class="filters-active-count hidden">0</span>
-    </button>
+    <select id="filter-type" class="filter-select">
+      <option value="">כל הסוגים</option>
+      <option value="client">לקוחות</option>
+      <option value="office">משרד</option>
+    </select>
+    <select id="filter-status" class="filter-select">
+      <option value="">כל הסטטוסים</option>
+    </select>
+    <select id="filter-priority" class="filter-select">
+      <option value="">כל הדחיפויות</option>
+      <option value="5">★★★★★ דחוף מאוד</option>
+      <option value="4">★★★★☆ דחוף</option>
+      <option value="3">★★★☆☆ בינוני</option>
+      <option value="2">★★☆☆☆ נמוך</option>
+      <option value="1">★☆☆☆☆ מינימלי</option>
+    </select>
+    <select id="filter-client" class="filter-select">
+      <option value="">כל הלקוחות</option>
+    </select>
+    <select id="filter-deadline" class="filter-select">
+      <option value="">כל הדדליינים</option>
+      <option value="overdue">⚠️ עבר</option>
+      <option value="soon">⏰ השבוע</option>
+      <option value="none">ללא דדליין</option>
+    </select>
+    <button id="clear-filters" class="btn-clear-filters">נקה</button>
   </div>
-
-  <!-- Hidden filter selects (used by JS) -->
-  <select id="filter-type"     class="hidden"><option value="">כל הסוגים</option><option value="client">לקוחות</option><option value="office">משרד</option></select>
-  <select id="filter-status"   class="hidden"><option value="">כל הסטטוסים</option></select>
-  <select id="filter-priority" class="hidden"><option value="">כל הדחיפויות</option><option value="5">★★★★★ דחוף מאוד</option><option value="4">★★★★☆ דחוף</option><option value="3">★★★☆☆ בינוני</option><option value="2">★★☆☆☆ נמוך</option><option value="1">★☆☆☆☆ מינימלי</option></select>
-  <select id="filter-client"   class="hidden"><option value="">כל הלקוחות</option></select>
-  <select id="filter-deadline" class="hidden"><option value="">כל הדדליינים</option><option value="overdue">⚠️ עבר</option><option value="soon">⏰ השבוע</option><option value="none">ללא דדליין</option></select>
-  <button id="clear-filters" class="hidden"></button>
 
   <!-- Project List -->
   <main id="project-list" class="project-list"></main>
@@ -277,59 +290,6 @@
   </div>
 </div>
 
-<!-- ============================================================
-     FILTERS MODAL
-     ============================================================ -->
-<div id="filters-modal" class="modal-backdrop hidden">
-  <div class="modal-box filters-modal-box">
-    <div class="modal-header">
-      <span class="modal-title">סינון פרויקטים</span>
-      <button class="btn-modal-close">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">סוג פרויקט</label>
-        <select id="fm-type" class="form-select">
-          <option value="">הכל</option>
-          <option value="client">לקוחות</option>
-          <option value="office">משרד</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">סטטוס</label>
-        <select id="fm-status" class="form-select"></select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">דחיפות</label>
-        <select id="fm-priority" class="form-select">
-          <option value="">הכל</option>
-          <option value="5">★★★★★ דחוף מאוד</option>
-          <option value="4">★★★★☆ דחוף</option>
-          <option value="3">★★★☆☆ בינוני</option>
-          <option value="2">★★☆☆☆ נמוך</option>
-          <option value="1">★☆☆☆☆ מינימלי</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">לקוח</label>
-        <select id="fm-client" class="form-select"></select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">דדליין</label>
-        <select id="fm-deadline" class="form-select">
-          <option value="">הכל</option>
-          <option value="overdue">⚠️ עבר</option>
-          <option value="soon">⏰ השבוע</option>
-          <option value="none">ללא דדליין</option>
-        </select>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button id="btn-apply-filters" class="btn-primary">החל פילטרים</button>
-      <button id="btn-clear-filters-modal" class="btn-secondary">נקה הכל</button>
-    </div>
-  </div>
-</div>
 
 <!-- ============================================================
      CHANGE PASSWORD MODAL
