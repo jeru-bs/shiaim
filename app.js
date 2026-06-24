@@ -202,7 +202,9 @@ function saveToCache() {
 async function saveProject(project) {
   showSpinner(true);
   try {
-    await apiCall('saveProject', { project });
+    const result = await apiCall('saveProject', { project });
+    // Capture Drive folder ID created for new projects
+    if (result.folderId && !project.folderId) project.folderId = result.folderId;
     // Update local state
     const idx = S.projects.findIndex(p => p.id === project.id);
     if (idx >= 0) S.projects[idx] = project;
@@ -493,6 +495,92 @@ function updateChangesBadge() {
 }
 
 // ================================================================
+// DRIVE FILE HELPERS
+// ================================================================
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function fileIcon(mimeType) {
+  if (!mimeType) return '📄';
+  if (mimeType.startsWith('image/'))        return '🖼️';
+  if (mimeType.includes('pdf'))             return '📕';
+  if (mimeType.includes('word') || mimeType.includes('document')) return '📝';
+  if (mimeType.includes('sheet') || mimeType.includes('excel'))   return '📊';
+  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return '📽️';
+  if (mimeType.includes('zip') || mimeType.includes('rar'))       return '🗜️';
+  if (mimeType.includes('video'))           return '🎬';
+  if (mimeType.includes('audio'))           return '🎵';
+  return '📄';
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024)        return bytes + ' B';
+  if (bytes < 1048576)     return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+async function loadProjectFiles(project) {
+  const listEl = document.getElementById('project-files-list');
+  if (!listEl || !project.folderId) return;
+  try {
+    const result = await apiCall('getProjectFiles', { folderId: project.folderId });
+    const files  = result.files || [];
+    if (files.length === 0) {
+      listEl.innerHTML = '<p class="text-muted text-sm">אין קבצים עדיין</p>';
+    } else {
+      listEl.innerHTML = files.map(f => `
+        <div class="project-file-item" data-file-id="${escHtml(f.id)}">
+          <span class="file-icon">${fileIcon(f.mimeType)}</span>
+          <a class="file-name" href="${escHtml(f.url)}" target="_blank" rel="noopener">${escHtml(f.name)}</a>
+          <span class="file-size">${formatFileSize(f.size)}</span>
+          <button class="btn-file-delete" onclick="deleteProjectFile('${escHtml(f.id)}', this)" title="מחק">✕</button>
+        </div>`).join('');
+    }
+  } catch (e) {
+    listEl.innerHTML = '<p class="text-muted text-sm">שגיאה בטעינת קבצים</p>';
+  }
+}
+
+async function uploadProjectFile(project, file) {
+  if (!project.folderId) { toast('אין תיקיית Drive לפרויקט', 'error'); return; }
+  const MAX = 20 * 1024 * 1024;
+  if (file.size > MAX) { toast(`${file.name} — גדול מ-20MB`, 'error'); return; }
+  toast(`מעלה: ${file.name}…`, 'info');
+  try {
+    const base64 = await fileToBase64(file);
+    const result = await apiCall('uploadFile', {
+      folderId: project.folderId,
+      filename: file.name,
+      base64,
+      mimeType: file.type || 'application/octet-stream'
+    });
+    if (result.error) throw new Error(result.error);
+    toast(`${file.name} הועלה ✓`, 'success');
+    loadProjectFiles(project);
+  } catch (e) {
+    toast('שגיאה בהעלאה: ' + e.message, 'error');
+  }
+}
+
+async function deleteProjectFile(fileId, btn) {
+  if (!confirm('למחוק את הקובץ מ-Drive?')) return;
+  try {
+    await apiCall('deleteFile', { fileId });
+    btn.closest('.project-file-item').remove();
+    toast('קובץ נמחק', 'success');
+  } catch (e) {
+    toast('שגיאה במחיקה: ' + e.message, 'error');
+  }
+}
+
+// ================================================================
 // PROJECT DETAIL PANEL
 // ================================================================
 function openProjectPanel(id) {
@@ -594,6 +682,19 @@ function renderProjectPanel(p) {
           ${designsCount === 0 ? '<p class="text-muted text-sm">אין עיצובים נוספים עדיין</p>' : ''}
           <button class="btn-add-design btn-add-design-lg" onclick="addDesign()">+ הוסף עיצוב</button>
         </div>
+      </div>
+      <div class="panel-section">
+        <div class="section-title-row">
+          <span class="section-title">קבצי הפרויקט</span>
+          ${p.folderId ? `
+            <label class="btn-upload-file" for="project-file-input">📎 הוסף קובץ</label>
+            <input type="file" id="project-file-input" class="file-input-hidden" multiple />
+            <a class="btn-drive-folder" href="https://drive.google.com/drive/folders/${escHtml(p.folderId)}" target="_blank" rel="noopener" title="פתח תיקייה ב-Drive">📁</a>
+          ` : '<span class="text-muted text-sm">תיקיית Drive תיוצר עם הפרויקט הבא</span>'}
+        </div>
+        <div class="project-files-list" id="project-files-list">
+          ${p.folderId ? '<p class="text-muted text-sm">טוען קבצים…</p>' : ''}
+        </div>
       </div>`;
   } else if (S.panelTab === 'notes') {
     tabContent = `
@@ -629,6 +730,19 @@ function renderProjectPanel(p) {
       renderProjectPanel(p);
     });
   });
+
+  // Designs tab: load files + wire upload
+  if (S.panelTab === 'designs' && p.folderId) {
+    loadProjectFiles(p);
+    const fileInput = body.querySelector('#project-file-input');
+    if (fileInput) {
+      fileInput.addEventListener('change', async e => {
+        const files = [...e.target.files];
+        for (const f of files) await uploadProjectFile(p, f);
+        e.target.value = '';
+      });
+    }
+  }
 
   // Details tab: inline-edit + priority star listeners
   if (S.panelTab === 'details') {
