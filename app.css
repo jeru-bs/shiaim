@@ -906,8 +906,8 @@ a { text-decoration: none; color: inherit; }
   margin-top: 0.5rem;
 }
 
-/* ── Panel Tabs ── */
-.center-panel .panel-body {
+/* ── Panel Tabs (project panel only) ── */
+#project-panel .panel-body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
