@@ -1006,24 +1006,50 @@ async function submitAddProject() {
 }
 
 // ================================================================
-// DELETE CONFIRM MODAL
+// CONFIRM MODAL (generic — delete & complete)
 // ================================================================
-let pendingDeleteId = null;
+let pendingConfirmAction = null;
+
+function openConfirmModal({ title, message, btnLabel, btnClass, action }) {
+  document.getElementById('confirm-modal-title').textContent = title;
+  document.getElementById('confirm-message').textContent = message;
+  const btn = document.getElementById('btn-confirm-action');
+  btn.textContent = btnLabel;
+  btn.className = btnClass;
+  pendingConfirmAction = action;
+  openModalEl(document.getElementById('confirm-modal'));
+}
+
+async function runConfirmAction() {
+  if (!pendingConfirmAction) return;
+  closeModalEl(document.getElementById('confirm-modal'));
+  const action = pendingConfirmAction;
+  pendingConfirmAction = null;
+  await action();
+}
 
 function openDeleteConfirm(id) {
   const project = S.projects.find(p => p.id === id);
   if (!project) return;
-  pendingDeleteId = id;
-  document.getElementById('confirm-message').textContent =
-    `האם למחוק את הפרויקט "${project.name}"? פעולה זו בלתי הפיכה.`;
-  openModalEl(document.getElementById('confirm-modal'));
+  openConfirmModal({
+    title: 'אישור מחיקה',
+    message: `האם למחוק את הפרויקט "${project.name}"? פעולה זו בלתי הפיכה.`,
+    btnLabel: 'מחק',
+    btnClass: 'btn-danger',
+    action: () => deleteProject(id)
+  });
 }
 
-async function confirmDelete() {
-  if (!pendingDeleteId) return;
-  closeModalEl(document.getElementById('confirm-modal'));
-  await deleteProject(pendingDeleteId);
-  pendingDeleteId = null;
+function openCompleteConfirm(id) {
+  const project = S.projects.find(p => p.id === id);
+  if (!project) return;
+  openConfirmModal({
+    title: 'סיום פרויקט',
+    message: `להעביר את "${project.name}" לפרויקטים שהסתיימו?`,
+    btnLabel: 'סיים פרויקט',
+    btnClass: 'btn-gold',
+    action: () => completeProject(id)
+  });
 }
 
 // ================================================================
@@ -1161,7 +1187,7 @@ function closePanel(id) {
   checkOverlay();
 }
 function closeAllPanels() {
-  document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.side-panel, .center-panel').forEach(p => p.classList.remove('open'));
   document.getElementById('overlay').classList.add('hidden');
 }
 
@@ -1169,7 +1195,7 @@ function openModalEl(el) { el.classList.remove('hidden'); }
 function closeModalEl(el) { el.classList.add('hidden'); }
 
 function checkOverlay() {
-  const anyOpen = [...document.querySelectorAll('.side-panel')].some(p => p.classList.contains('open'));
+  const anyOpen = [...document.querySelectorAll('.side-panel, .center-panel')].some(p => p.classList.contains('open'));
   document.getElementById('overlay').classList.toggle('hidden', !anyOpen);
 }
 
@@ -1286,7 +1312,7 @@ function wireEvents() {
 
   // Project panel buttons
   document.getElementById('btn-complete-project').addEventListener('click', () =>
-    completeProject(S.panelProjectId));
+    openCompleteConfirm(S.panelProjectId));
   document.getElementById('btn-restore-project').addEventListener('click', () =>
     restoreProject(S.panelProjectId));
   document.getElementById('btn-delete-project').addEventListener('click', () =>
@@ -1314,8 +1340,8 @@ function wireEvents() {
   // Add project modal submit
   document.getElementById('btn-submit-add').addEventListener('click', submitAddProject);
 
-  // Confirm delete
-  document.getElementById('btn-confirm-delete').addEventListener('click', confirmDelete);
+  // Confirm action (delete / complete)
+  document.getElementById('btn-confirm-action').addEventListener('click', runConfirmAction);
 
   // Statuses modal
   document.getElementById('btn-add-status').addEventListener('click', addStatus);
