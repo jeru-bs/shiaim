@@ -895,6 +895,98 @@ a { text-decoration: none; color: inherit; }
   color: var(--navy);
   background: #EEF1FA;
 }
+.btn-add-design-lg {
+  padding: 1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+}
+
+/* ── Panel Tabs ── */
+.center-panel .panel-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border);
+  flex-shrink: 0;
+  padding: 0 1rem;
+  background: var(--surface);
+  gap: 0;
+}
+.panel-tab-btn {
+  padding: 0.7rem 1.1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-sec);
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  background: none;
+  transition: color 0.18s, border-color 0.18s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: inherit;
+}
+.panel-tab-btn.active { color: var(--navy); border-bottom-color: var(--navy); }
+.panel-tab-btn:hover:not(.active) { color: var(--text); }
+.panel-tab-count {
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.68rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 20px;
+  line-height: 1.4;
+  min-width: 1.2rem;
+  text-align: center;
+}
+.panel-tab-content {
+  flex: 1;
+  overflow-y: auto;
+}
+.panel-tab-content::-webkit-scrollbar { width: 4px; }
+.panel-tab-content::-webkit-scrollbar-track { background: transparent; }
+.panel-tab-content::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 2px; }
+
+/* ── Design Sub-rows (main list) ── */
+.design-subrow {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  margin: -0.35rem 0.5rem 0.4rem 2rem;
+  padding: 0.38rem 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  transition: background var(--transition);
+}
+.design-subrow:hover { background: #EEF1FA; }
+.design-sub-icon { font-size: 0.78rem; color: var(--text-muted); flex-shrink: 0; }
+.design-sub-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.design-sub-status {
+  font-size: 0.72rem;
+  color: var(--text-sec);
+  background: var(--border);
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
 /* ── Panel Action Buttons ── */
 .btn-primary {

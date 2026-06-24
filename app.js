@@ -59,6 +59,7 @@ const S = {
   filters:   { search: '', type: '', status: '', priority: '', client: '', deadline: '' },
   panelProjectId: null,
   panelDesignId:  null,
+  panelTab:       'details',
 };
 
 // ================================================================
@@ -422,6 +423,12 @@ function renderProjectList() {
   list.querySelectorAll('.project-row').forEach(row => {
     row.addEventListener('click', () => openProjectPanel(row.dataset.id));
   });
+  list.querySelectorAll('.design-subrow').forEach(row => {
+    row.addEventListener('click', e => {
+      e.stopPropagation();
+      openDesignFromList(row.dataset.projectId, parseInt(row.dataset.designIdx));
+    });
+  });
 }
 
 function renderProjectRow(p) {
@@ -449,6 +456,13 @@ function renderProjectRow(p) {
        </span>`
     : '';
 
+  const subRows = (p.designs || []).map((d, i) => `
+    <div class="design-subrow" data-project-id="${escHtml(p.id)}" data-design-idx="${i}">
+      <span class="design-sub-icon">🎨</span>
+      <span class="design-sub-name">${escHtml(d.name || `עיצוב ${i+1}`)}</span>
+      ${d.status ? `<span class="design-sub-status">${escHtml(d.status)}</span>` : ''}
+    </div>`).join('');
+
   return `
     <div class="project-row" data-id="${escHtml(p.id)}" data-priority="${p.priority || 0}">
       <div class="row-top">
@@ -464,7 +478,8 @@ function renderProjectRow(p) {
         </div>
         <div class="row-indicators">${indicators}</div>
       </div>
-    </div>`;
+    </div>
+    ${subRows}`;
 }
 
 function updateChangesBadge() {
@@ -484,8 +499,14 @@ function openProjectPanel(id) {
   const project = S.projects.find(p => p.id === id);
   if (!project) return;
   S.panelProjectId = id;
+  S.panelTab = 'details';
   renderProjectPanel(project);
   openPanel('project-panel');
+}
+
+function openDesignFromList(projectId, designIdx) {
+  S.panelProjectId = projectId;
+  openDesignPanel(designIdx);
 }
 
 function renderProjectPanel(p) {
@@ -495,105 +516,130 @@ function renderProjectPanel(p) {
   panel.querySelector('.panel-title').innerHTML =
     `<span>פרויקט:</span> ${escHtml(p.name)}`;
 
-  const body = panel.querySelector('.panel-body');
-  body.innerHTML = `
-    <!-- Basic Info -->
-    <div class="panel-section">
-      <div class="section-title">פרטים בסיסיים</div>
-      <div class="field-grid">
-        <div class="field-item">
-          <span class="field-label">שם פרויקט</span>
-          <div class="field-value editable" data-field="name" data-type="text">${escHtml(p.name)}</div>
-        </div>
-        <div class="field-item">
-          <span class="field-label">לקוח</span>
-          <div class="field-value editable" data-field="client" data-type="text">
-            ${p.client ? escHtml(p.client) : '<span class="placeholder">—</span>'}
-          </div>
-        </div>
-        <div class="field-item">
-          <span class="field-label">סוג פרויקט</span>
-          <div class="field-value editable" data-field="type" data-type="select" data-options="client:פרויקט לקוח,office:פרויקט משרד">
-            ${p.type === 'client' ? 'פרויקט לקוח' : 'פרויקט משרד'}
-          </div>
-        </div>
-        <div class="field-item">
-          <span class="field-label">דדליין</span>
-          <div class="field-value editable" data-field="deadline" data-type="date">
-            ${p.deadline ? fmt.date(p.deadline) : '<span class="placeholder">ללא</span>'}
-          </div>
-        </div>
-        <div class="field-item full">
-          <span class="field-label">סטטוס</span>
-          <div class="field-value editable" data-field="status" data-type="status">
-            ${escHtml(p.status || 'בתכנון')}
-          </div>
-        </div>
-        <div class="field-item full">
-          <span class="field-label">רמת דחיפות ${!isBoss ? '(הבוס בלבד)' : ''}</span>
-          <div class="field-value ${isBoss ? 'editable' : ''}" data-field="priority" data-type="priority">
-            ${renderPriorityDisplay(p.priority || 0, isBoss)}
-          </div>
-        </div>
-      </div>
-    </div>
+  if (!S.panelTab) S.panelTab = 'details';
 
-    <!-- Notes -->
-    <div class="panel-section">
-      <div class="section-title">הערות</div>
-      <div class="log-list" id="notes-list">
-        ${renderLogEntries(p.notes || [], 'notes-entry')}
-      </div>
-      <div class="log-add-form">
-        <textarea class="log-textarea" id="new-note" placeholder="הוסף הערה..."></textarea>
-        <button class="btn-gold" onclick="addLogEntry('notes')">הוסף הערה</button>
-      </div>
-    </div>
+  const designsCount = (p.designs || []).length;
+  const notesCount = (p.notes || []).length + (p.importantInfo || []).length;
 
-    <!-- Important Info -->
-    <div class="panel-section">
-      <div class="section-title">מידע חשוב</div>
-      <div class="log-list" id="info-list">
-        ${renderLogEntries(p.importantInfo || [], 'info-entry')}
-      </div>
-      <div class="log-add-form">
-        <textarea class="log-textarea" id="new-info" placeholder="הוסף מידע חשוב..."></textarea>
-        <button class="btn-gold" onclick="addLogEntry('info')">הוסף מידע</button>
-      </div>
-    </div>
+  const tabsHtml = `
+    <div class="panel-tabs">
+      <button class="panel-tab-btn${S.panelTab === 'details' ? ' active' : ''}" data-tab="details">פרטים</button>
+      <button class="panel-tab-btn${S.panelTab === 'designs' ? ' active' : ''}" data-tab="designs">
+        עיצובים${designsCount > 0 ? ` <span class="panel-tab-count">${designsCount}</span>` : ''}
+      </button>
+      <button class="panel-tab-btn${S.panelTab === 'notes' ? ' active' : ''}" data-tab="notes">
+        הערות${notesCount > 0 ? ` <span class="panel-tab-count">${notesCount}</span>` : ''}
+      </button>
+    </div>`;
 
-    <!-- Designs -->
-    <div class="panel-section">
-      <div class="section-title">עיצובים נוספים</div>
-      <div class="designs-list">
-        ${(p.designs || []).map((d, i) => `
-          <div class="design-item" onclick="openDesignPanel(${i})">
-            <div class="design-item-left">
-              <div class="design-item-name">${escHtml(d.name || `עיצוב ${i+1}`)}</div>
-              <div class="design-item-status">${escHtml(d.status || '')}</div>
+  let tabContent = '';
+
+  if (S.panelTab === 'details') {
+    tabContent = `
+      <div class="panel-section">
+        <div class="field-grid">
+          <div class="field-item">
+            <span class="field-label">שם פרויקט</span>
+            <div class="field-value editable" data-field="name" data-type="text">${escHtml(p.name)}</div>
+          </div>
+          <div class="field-item">
+            <span class="field-label">לקוח</span>
+            <div class="field-value editable" data-field="client" data-type="text">
+              ${p.client ? escHtml(p.client) : '<span class="placeholder">—</span>'}
             </div>
-            <span class="design-item-arrow">‹</span>
-          </div>`).join('')}
-        <button class="btn-add-design" onclick="addDesign()">+ הוסף עיצוב</button>
+          </div>
+          <div class="field-item">
+            <span class="field-label">סוג פרויקט</span>
+            <div class="field-value editable" data-field="type" data-type="select" data-options="client:פרויקט לקוח,office:פרויקט משרד">
+              ${p.type === 'client' ? 'פרויקט לקוח' : 'פרויקט משרד'}
+            </div>
+          </div>
+          <div class="field-item">
+            <span class="field-label">דדליין</span>
+            <div class="field-value editable" data-field="deadline" data-type="date">
+              ${p.deadline ? fmt.date(p.deadline) : '<span class="placeholder">ללא</span>'}
+            </div>
+          </div>
+          <div class="field-item full">
+            <span class="field-label">סטטוס</span>
+            <div class="field-value editable" data-field="status" data-type="status">
+              ${escHtml(p.status || 'בתכנון')}
+            </div>
+          </div>
+          <div class="field-item full">
+            <span class="field-label">רמת דחיפות ${!isBoss ? '(הבוס בלבד)' : ''}</span>
+            <div class="field-value ${isBoss ? 'editable' : ''}" data-field="priority" data-type="priority">
+              ${renderPriorityDisplay(p.priority || 0, isBoss)}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  } else if (S.panelTab === 'designs') {
+    tabContent = `
+      <div class="panel-section">
+        <div class="designs-list">
+          ${(p.designs || []).map((d, i) => `
+            <div class="design-item" onclick="openDesignPanel(${i})">
+              <div class="design-item-left">
+                <div class="design-item-name">${escHtml(d.name || `עיצוב ${i+1}`)}</div>
+                <div class="design-item-status">${escHtml(d.status || '')}</div>
+              </div>
+              <span class="design-item-arrow">‹</span>
+            </div>`).join('')}
+          ${designsCount === 0 ? '<p class="text-muted text-sm">אין עיצובים נוספים עדיין</p>' : ''}
+          <button class="btn-add-design btn-add-design-lg" onclick="addDesign()">+ הוסף עיצוב</button>
+        </div>
+      </div>`;
+  } else if (S.panelTab === 'notes') {
+    tabContent = `
+      <div class="panel-section">
+        <div class="section-title">הערות</div>
+        <div class="log-list" id="notes-list">
+          ${renderLogEntries(p.notes || [], 'notes-entry')}
+        </div>
+        <div class="log-add-form">
+          <textarea class="log-textarea" id="new-note" placeholder="הוסף הערה..."></textarea>
+          <button class="btn-gold" onclick="addLogEntry('notes')">הוסף הערה</button>
+        </div>
       </div>
-    </div>
-  `;
+      <div class="panel-section">
+        <div class="section-title">מידע חשוב</div>
+        <div class="log-list" id="info-list">
+          ${renderLogEntries(p.importantInfo || [], 'info-entry')}
+        </div>
+        <div class="log-add-form">
+          <textarea class="log-textarea" id="new-info" placeholder="הוסף מידע חשוב..."></textarea>
+          <button class="btn-gold" onclick="addLogEntry('info')">הוסף מידע</button>
+        </div>
+      </div>`;
+  }
 
-  // Attach inline-edit listeners
-  body.querySelectorAll('.field-value.editable').forEach(el => {
-    el.addEventListener('click', () => startInlineEdit(el, p));
+  const body = panel.querySelector('.panel-body');
+  body.innerHTML = tabsHtml + `<div class="panel-tab-content">${tabContent}</div>`;
+
+  // Tab click handlers
+  body.querySelectorAll('.panel-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      S.panelTab = btn.dataset.tab;
+      renderProjectPanel(p);
+    });
   });
 
-  // Attach priority star listeners if boss
-  if (isBoss) {
-    body.querySelectorAll('.priority-star-btn').forEach(btn => {
-      btn.addEventListener('click', async e => {
-        e.stopPropagation();
-        const val = parseInt(btn.dataset.value);
-        await updateProjectField(p.id, 'priority', val);
-        renderProjectPanel(S.projects.find(x => x.id === p.id));
-      });
+  // Details tab: inline-edit + priority star listeners
+  if (S.panelTab === 'details') {
+    body.querySelectorAll('.field-value.editable').forEach(el => {
+      el.addEventListener('click', () => startInlineEdit(el, p));
     });
+    if (isBoss) {
+      body.querySelectorAll('.priority-star-btn').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const val = parseInt(btn.dataset.value);
+          await updateProjectField(p.id, 'priority', val);
+          renderProjectPanel(S.projects.find(x => x.id === p.id));
+        });
+      });
+    }
   }
 
   // Panel footer buttons
@@ -877,6 +923,9 @@ function startDesignInlineEdit(el, project, design, idx) {
   el.innerHTML = '';
   el.appendChild(input);
   input.focus();
+  if (type === 'status') {
+    setTimeout(() => input.click(), 0);
+  }
 
   const save = async () => {
     const newVal = input.value.trim() || current;
