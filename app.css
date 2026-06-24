@@ -332,49 +332,62 @@ a { text-decoration: none; color: inherit; }
 .filters-bar {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 0.625rem 1rem;
+  padding: 0.5rem 1rem;
   display: flex;
   gap: 0.5rem;
-  overflow-x: auto;
   flex-shrink: 0;
-  scrollbar-width: none;
   align-items: center;
 }
-.filters-bar::-webkit-scrollbar { display: none; }
 
-.filter-select, .filter-search {
-  height: 34px;
+.filter-search {
+  flex: 1;
+  height: 36px;
   border: 1.5px solid var(--border);
   border-radius: 20px;
-  padding: 0 0.75rem;
-  font-size: 0.82rem;
+  padding: 0 0.875rem;
+  font-size: 0.88rem;
   color: var(--text);
   background: var(--bg);
-  white-space: nowrap;
-  flex-shrink: 0;
   direction: rtl;
   transition: border-color var(--transition);
+  min-width: 0;
 }
-.filter-select:focus, .filter-search:focus {
-  outline: none;
-  border-color: var(--navy-light);
-}
-.filter-search { width: 160px; padding-right: 0.875rem; }
+.filter-search:focus { outline: none; border-color: var(--navy-light); }
 
-.filter-select.active { border-color: var(--navy); background: #EEF1FA; font-weight: 600; }
-
-.btn-clear-filters {
-  height: 34px;
-  padding: 0 0.75rem;
+.btn-filters {
+  height: 36px;
+  padding: 0 1rem;
   border-radius: 20px;
-  font-size: 0.8rem;
-  color: var(--text-sec);
   border: 1.5px solid var(--border);
-  background: var(--surface);
+  background: var(--bg);
+  color: var(--text-sec);
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   flex-shrink: 0;
   transition: all var(--transition);
+  font-family: inherit;
+  cursor: pointer;
 }
-.btn-clear-filters:hover { border-color: var(--red); color: var(--red); }
+.btn-filters:hover { border-color: var(--navy); color: var(--navy); }
+.btn-filters.active { background: #EEF1FA; border-color: var(--navy); color: var(--navy); }
+
+.filters-active-count {
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.filters-modal-box { max-width: 380px; }
+
+/* hidden native selects kept for JS compatibility */
+.filter-select { display: none; }
 
 /* ── Section Header ── */
 .section-header {
