@@ -609,6 +609,10 @@ a { text-decoration: none; color: inherit; }
   opacity: 1;
   pointer-events: auto;
 }
+.design-panel-modal {
+  width: min(780px, 94vw);
+  height: min(82vh, 680px);
+}
 
 .panel-header {
   background: var(--navy);

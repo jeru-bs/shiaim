@@ -505,7 +505,12 @@ function openProjectPanel(id) {
 }
 
 function openDesignFromList(projectId, designIdx) {
+  const project = S.projects.find(p => p.id === projectId);
+  if (!project) return;
   S.panelProjectId = projectId;
+  S.panelTab = 'designs';
+  renderProjectPanel(project);
+  openPanel('project-panel');
   openDesignPanel(designIdx);
 }
 
@@ -844,7 +849,11 @@ function renderDesignPanel(project, design, idx) {
         </div>
         <div class="field-item full">
           <span class="field-label">סטטוס</span>
-          <div class="field-value editable" data-dfield="status" data-type="status">${escHtml(design.status || '')}</div>
+          <div class="field-value">
+            <select class="field-edit-select design-status-sel">
+              ${S.statuses.map(s => `<option value="${escHtml(s)}" ${s === (design.status || '') ? 'selected' : ''}>${escHtml(s)}</option>`).join('')}
+            </select>
+          </div>
         </div>
         <div class="field-item">
           <span class="field-label">דדליין</span>
@@ -880,7 +889,16 @@ function renderDesignPanel(project, design, idx) {
     </div>
   `;
 
-  // Inline edit
+  // Status select — direct change handler (no click-to-edit)
+  const statusSel = body.querySelector('.design-status-sel');
+  if (statusSel) {
+    statusSel.addEventListener('change', async () => {
+      const newVal = statusSel.value;
+      if (newVal !== design.status) await updateDesignField(project, idx, 'status', newVal);
+    });
+  }
+
+  // Other editable fields (name, deadline, priority)
   body.querySelectorAll('.field-value.editable').forEach(el => {
     el.addEventListener('click', () => startDesignInlineEdit(el, project, design, idx));
   });
@@ -983,6 +1001,7 @@ async function deleteDesign() {
     await logChange('field', project.id, project.name,
       `עיצוב "${design.name || S.panelDesignId+1}" נמחק`);
     closePanel('design-panel');
+    S.panelTab = 'designs';
     renderProjectPanel(project);
     toast('עיצוב נמחק', 'success');
   }
@@ -1370,7 +1389,17 @@ function wireEvents() {
   // Panel close buttons
   document.querySelectorAll('.btn-panel-close').forEach(btn => {
     btn.addEventListener('click', () => {
-      const panel = btn.closest('.side-panel');
+      // Project panel X → close everything
+      if (btn.closest('#project-panel')) { closeAllPanels(); return; }
+      // Design panel X → close only design panel (project panel stays)
+      if (btn.closest('#design-panel')) {
+        closePanel('design-panel');
+        // If project panel is open, keep it; otherwise check overlay
+        checkOverlay();
+        return;
+      }
+      // Other side panels (changes panel, etc.)
+      const panel = btn.closest('.side-panel, .center-panel');
       if (panel) closePanel(panel.id);
     });
   });
