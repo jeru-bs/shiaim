@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="שיאים">
   <title>התנהלות שוטפת — שיאים</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="app.css?v=10">
+  <link rel="stylesheet" href="app.css?v=11">
 </head>
 <body>
 
@@ -88,7 +88,7 @@
   </header>
 
   <!-- View Toggle + Section Label -->
-  <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+  <div id="section-header-bar" style="background:var(--surface);border-bottom:1px solid var(--border);padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
     <div class="section-header" style="padding:0;flex:1;margin:0;">
       <span id="section-label" class="section-label">פרויקטים פעילים</span>
       <span id="section-count" class="section-count">0 פרויקטים</span>
@@ -97,7 +97,7 @@
   </div>
 
   <!-- Filters -->
-  <div class="filters-bar">
+  <div id="filters-bar" class="filters-bar">
     <input type="search" id="filter-search" class="filter-search" placeholder="🔍 חיפוש..." />
     <select id="filter-type" class="filter-select">
       <option value="">כל הסוגים</option>
@@ -127,13 +127,46 @@
     <button id="clear-filters" class="btn-clear-filters">נקה</button>
   </div>
 
+  <!-- Wing Navigation Tiles -->
+  <div id="wing-tiles" class="wing-tiles">
+    <button class="wing-tile" onclick="openWing('ideas')">
+      <span class="wing-tile-icon">💡</span>
+      <span class="wing-tile-label">רעיונות</span>
+    </button>
+    <button class="wing-tile" onclick="openWing('products')">
+      <span class="wing-tile-icon">📦</span>
+      <span class="wing-tile-label">מוצרים וספקים</span>
+    </button>
+    <button class="wing-tile" onclick="openWing('clients')">
+      <span class="wing-tile-icon">👤</span>
+      <span class="wing-tile-label">לקוחות</span>
+    </button>
+  </div>
+
   <!-- Project List -->
   <main id="project-list" class="project-list"></main>
+
+  <!-- Wing Content (replaces project list when active) -->
+  <div id="wing-content" class="wing-content hidden"></div>
 
   <!-- FAB -->
   <button id="add-btn" class="fab" title="פרויקט חדש">+</button>
 
 </div><!-- /#app -->
+
+<!-- ============================================================
+     CLIENT DETAIL PANEL
+     ============================================================ -->
+<div id="client-panel" class="center-panel">
+  <div class="panel-header">
+    <button class="btn-panel-close">✕</button>
+    <div class="panel-title">לקוח</div>
+  </div>
+  <div class="panel-body"></div>
+  <div class="panel-footer">
+    <button id="btn-delete-client" class="btn-danger">🗑 מחק לקוח</button>
+  </div>
+</div>
 
 <!-- ============================================================
      PROJECT DETAIL PANEL
@@ -294,6 +327,37 @@
 <!-- ============================================================
      CHANGE PASSWORD MODAL
      ============================================================ -->
+<div id="change-password-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">שינוי סיסמה</span>
+      <button class="btn-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">סיסמה נוכחית</label>
+        <input type="password" id="cp-current" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">סיסמה חדשה</label>
+        <input type="password" id="cp-new" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">אישור סיסמה חדשה</label>
+        <input type="password" id="cp-confirm" class="form-input" />
+      </div>
+      <div id="cp-error" class="login-error"></div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="submitChangePassword()" class="btn-primary">עדכן סיסמה</button>
+      <button class="btn-secondary btn-modal-close">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js?v=11"></script>
+</body>
+</html>
 <div id="change-password-modal" class="modal-backdrop hidden">
   <div class="modal-box" style="max-width:360px;">
     <div class="modal-header">

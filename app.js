@@ -53,6 +53,7 @@ const S = {
   projects:  [],
   statuses:  [],
   changes:   [],
+  clients:   [],
   lastSeen:  null,
   newCount:  0,
   view:      'active',  // 'active' | 'completed'
@@ -61,6 +62,9 @@ const S = {
   panelDesignId:  null,
   panelTab:       'details',
   panelDesignTab: 'details',
+  currentWing:    null,   // null | 'clients' | 'ideas' | 'products'
+  clientSearch:   '',
+  clientPanelId:  null,
 };
 
 // ================================================================
@@ -136,16 +140,18 @@ async function apiCall(action, data = {}) {
 async function loadAll() {
   showSpinner(true);
   try {
-    const [pRes, sRes, lsRes, cRes] = await Promise.all([
+    const [pRes, sRes, lsRes, cRes, clRes] = await Promise.all([
       apiCall('getProjects'),
       apiCall('getStatuses'),
       apiCall('getLastSeen', { user: S.user.username }),
       apiCall('getChanges'),
+      apiCall('getClients'),
     ]);
 
     S.projects = pRes.projects || [];
     S.statuses  = sRes.statuses || CONFIG.DEFAULT_STATUSES;
     S.changes   = cRes.changes  || [];
+    S.clients   = clRes.clients || [];
     S.lastSeen  = lsRes.lastSeen || null;
 
     // Count new changes since last login
@@ -1633,6 +1639,18 @@ function wireEvents() {
   document.getElementById('btn-delete-project').addEventListener('click', () =>
     openDeleteConfirm(S.panelProjectId));
 
+  document.getElementById('btn-delete-client').addEventListener('click', () => {
+    if (!S.clientPanelId) return;
+    const client = S.clients.find(c => c.id === S.clientPanelId);
+    openConfirmModal({
+      title:    'מחיקת לקוח',
+      message:  `למחוק את "${client?.name || 'הלקוח'}"?`,
+      btnLabel: 'מחק',
+      btnClass: 'btn-danger',
+      action:   () => deleteClientData(S.clientPanelId),
+    });
+  });
+
   // Panel close buttons
   document.querySelectorAll('.btn-panel-close').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1680,6 +1698,232 @@ function wireEvents() {
   document.getElementById('password').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('login-form').requestSubmit();
   });
+}
+
+// ================================================================
+// WING NAVIGATION
+// ================================================================
+function openWing(wingName) {
+  S.currentWing = wingName;
+  document.getElementById('section-header-bar').classList.add('hidden');
+  document.getElementById('filters-bar').classList.add('hidden');
+  document.getElementById('project-list').classList.add('hidden');
+  document.getElementById('add-btn').classList.add('hidden');
+  document.getElementById('wing-tiles').classList.add('hidden');
+  document.getElementById('wing-content').classList.remove('hidden');
+  renderWingContent();
+}
+
+function closeWing() {
+  S.currentWing = null;
+  closePanel('client-panel');
+  document.getElementById('section-header-bar').classList.remove('hidden');
+  document.getElementById('filters-bar').classList.remove('hidden');
+  document.getElementById('project-list').classList.remove('hidden');
+  document.getElementById('add-btn').classList.remove('hidden');
+  document.getElementById('wing-tiles').classList.remove('hidden');
+  document.getElementById('wing-content').classList.add('hidden');
+}
+
+function renderWingContent() {
+  switch (S.currentWing) {
+    case 'clients':  renderClientsWing(); break;
+    case 'ideas':    renderComingSoonWing('💡', 'רעיונות'); break;
+    case 'products': renderComingSoonWing('📦', 'מוצרים וספקים'); break;
+  }
+}
+
+function renderComingSoonWing(icon, label) {
+  document.getElementById('wing-content').innerHTML = `
+    <div class="wing-header">
+      <button class="btn-wing-back" onclick="closeWing()">→ חזרה</button>
+      <h2 class="wing-title">${icon} ${escHtml(label)}</h2>
+      <div></div>
+    </div>
+    <div class="empty-state" style="margin-top:3rem;">
+      <div class="empty-icon">🚧</div>
+      <p>בפיתוח — בקרוב!</p>
+    </div>`;
+}
+
+// ================================================================
+// CLIENTS — DATA
+// ================================================================
+async function saveClientData(client) {
+  showSpinner(true);
+  try {
+    const res = await apiCall('saveClient', { client });
+    const saved = res.client;
+    const idx = S.clients.findIndex(c => c.id === saved.id);
+    if (idx >= 0) S.clients[idx] = saved;
+    else S.clients.push(saved);
+    renderClientsWing();
+    toast('הלקוח נשמר ✓', 'success');
+    return saved;
+  } catch (e) {
+    toast('שגיאה בשמירה: ' + e.message, 'error');
+    return null;
+  } finally {
+    showSpinner(false);
+  }
+}
+
+async function deleteClientData(id) {
+  showSpinner(true);
+  try {
+    await apiCall('deleteClient', { id });
+    S.clients = S.clients.filter(c => c.id !== id);
+    closePanel('client-panel');
+    S.clientPanelId = null;
+    renderClientsWing();
+    toast('הלקוח נמחק', 'success');
+  } catch (e) {
+    toast('שגיאה במחיקה: ' + e.message, 'error');
+  } finally {
+    showSpinner(false);
+  }
+}
+
+// ================================================================
+// CLIENTS — UI
+// ================================================================
+function renderClientsWing() {
+  const q = (S.clientSearch || '').toLowerCase();
+  const filtered = S.clients.filter(c =>
+    !q ||
+    (c.name || '').toLowerCase().includes(q) ||
+    (c.companyId || '').toLowerCase().includes(q) ||
+    (c.phone || '').toLowerCase().includes(q) ||
+    (c.email || '').toLowerCase().includes(q)
+  );
+
+  const wc = document.getElementById('wing-content');
+  wc.innerHTML = `
+    <div class="wing-header">
+      <button class="btn-wing-back" onclick="closeWing()">→ חזרה</button>
+      <h2 class="wing-title">👤 לקוחות</h2>
+      <button class="btn-gold" onclick="openClientPanel(null)">+ לקוח חדש</button>
+    </div>
+    <div class="wing-toolbar">
+      <input type="search" class="filter-search" placeholder="🔍 חיפוש לקוח..."
+             value="${escHtml(S.clientSearch)}"
+             oninput="S.clientSearch=this.value;renderClientsWing()" />
+      <span class="section-count">${filtered.length} לקוחות</span>
+    </div>
+    <div class="clients-list">
+      ${filtered.length === 0
+        ? `<div class="empty-state"><div class="empty-icon">👤</div><p>${S.clientSearch ? 'לא נמצאו תוצאות' : 'אין לקוחות עדיין'}</p></div>`
+        : filtered.map(c => renderClientRow(c)).join('')
+      }
+    </div>`;
+
+  wc.querySelectorAll('.client-row').forEach(row => {
+    row.addEventListener('click', () => openClientPanel(row.dataset.id));
+  });
+}
+
+function renderClientRow(c) {
+  return `
+    <div class="client-row project-row" data-id="${escHtml(c.id)}">
+      <div class="row-top">
+        <span class="row-name">${escHtml(c.name || '—')}</span>
+        ${c.companyId ? `<span class="type-badge office">ח.פ. ${escHtml(c.companyId)}</span>` : ''}
+      </div>
+      <div class="row-bottom">
+        <div class="row-meta">
+          ${c.phone ? `<span class="client-text">📞 ${escHtml(c.phone)}</span>` : ''}
+          ${c.email ? `<span class="client-text">✉️ ${escHtml(c.email)}</span>` : ''}
+          ${c.address ? `<span class="client-text">📍 ${escHtml(c.address)}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+function openClientPanel(id) {
+  S.clientPanelId = id || null;
+  const client = id ? S.clients.find(c => c.id === id) : null;
+  renderClientPanel(client);
+  // show/hide delete button
+  document.getElementById('btn-delete-client').classList.toggle('hidden', !id);
+  openPanel('client-panel');
+}
+
+function renderClientPanel(client) {
+  const isNew = !client;
+  const c = client || { id: '', name: '', companyId: '', phone: '', email: '', address: '', notes: '' };
+  const panel = document.getElementById('client-panel');
+  panel.querySelector('.panel-title').textContent = isNew ? 'לקוח חדש' : (c.name || 'לקוח');
+
+  panel.querySelector('.panel-body').innerHTML = `
+    <div class="panel-section">
+      <div class="panel-tabs">
+        <button class="panel-tab active" data-tab="details" onclick="switchClientTab('details',this)">פרטים</button>
+        <button class="panel-tab" data-tab="notes" onclick="switchClientTab('notes',this)">הערות</button>
+      </div>
+
+      <div id="client-tab-details" class="panel-tab-content">
+        <div class="form-group">
+          <label class="form-label">שם *</label>
+          <input type="text" class="form-input" id="cf-name" value="${escHtml(c.name)}" placeholder="שם הלקוח" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">ח.פ. / ע.מ.</label>
+          <input type="text" class="form-input" id="cf-companyId" value="${escHtml(c.companyId)}" placeholder="מספר חברה" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">טלפון</label>
+          <input type="tel" class="form-input" id="cf-phone" value="${escHtml(c.phone)}" placeholder="050-0000000" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">אימייל</label>
+          <input type="email" class="form-input" id="cf-email" value="${escHtml(c.email)}" placeholder="email@example.com" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">כתובת</label>
+          <input type="text" class="form-input" id="cf-address" value="${escHtml(c.address)}" placeholder="כתובת" />
+        </div>
+        <button class="btn-gold" style="width:100%;margin-top:0.5rem;" onclick="submitClientPanel()">💾 שמור</button>
+      </div>
+
+      <div id="client-tab-notes" class="panel-tab-content hidden">
+        <div class="form-group">
+          <label class="form-label">הערות</label>
+          <textarea class="form-textarea" id="cf-notes" rows="8" placeholder="הערות על הלקוח...">${escHtml(c.notes)}</textarea>
+        </div>
+        <button class="btn-gold" style="width:100%;margin-top:0.5rem;" onclick="submitClientPanel()">💾 שמור</button>
+      </div>
+    </div>`;
+}
+
+function switchClientTab(tab, btn) {
+  document.querySelectorAll('#client-panel .panel-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#client-panel .panel-tab-content').forEach(c => c.classList.add('hidden'));
+  btn.classList.add('active');
+  document.getElementById('client-tab-' + tab).classList.remove('hidden');
+}
+
+async function submitClientPanel() {
+  const name = document.getElementById('cf-name').value.trim();
+  if (!name) { toast('שם הלקוח הוא שדה חובה', 'error'); return; }
+
+  const existing = S.clients.find(c => c.id === S.clientPanelId);
+  const client = {
+    id:        S.clientPanelId || '',
+    name,
+    companyId: document.getElementById('cf-companyId').value.trim(),
+    phone:     document.getElementById('cf-phone').value.trim(),
+    email:     document.getElementById('cf-email').value.trim(),
+    address:   document.getElementById('cf-address').value.trim(),
+    notes:     document.getElementById('cf-notes')?.value.trim() || (existing?.notes || ''),
+    createdAt: existing?.createdAt || '',
+  };
+
+  const saved = await saveClientData(client);
+  if (saved) {
+    S.clientPanelId = saved.id;
+    document.getElementById('client-panel').querySelector('.panel-title').textContent = saved.name;
+    document.getElementById('btn-delete-client').classList.remove('hidden');
+  }
 }
 
 // ================================================================
