@@ -28,7 +28,7 @@ function savePasswords(passwords) {
 }
 
 const CONFIG = {
-  API_URL: localStorage.getItem('shiaim_api_url') || '',
+  API_URL: localStorage.getItem('shiaim_api_url') || 'https://script.google.com/macros/s/AKfycbwElreyCeSg2yIuqbg3ZJ63IcY3_kPqriW_3zQymCvxwkgxjgggkL35J0jKgXoiRFbs/exec',
 
   USERS: {
     'aharon': { displayName: 'אהרון', role: 'user'  },
