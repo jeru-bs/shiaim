@@ -60,6 +60,7 @@ const S = {
   panelProjectId: null,
   panelDesignId:  null,
   panelTab:       'details',
+  panelDesignTab: 'details',
 };
 
 // ================================================================
@@ -580,6 +581,80 @@ async function deleteProjectFile(fileId, btn) {
   }
 }
 
+// ── Design file functions ──
+async function getOrCreateDesignFolderAndRender(project, design, idx) {
+  try {
+    const result = await apiCall('getOrCreateDesignFolder', {
+      projectFolderId: project.folderId,
+      designName: design.name || `עיצוב ${idx + 1}`
+    });
+    if (result.folderId) {
+      design.folderId = result.folderId;
+      project.designs[idx] = design;
+      await saveProject(project);
+      renderDesignPanel(project, design, idx);
+    } else {
+      toast('שגיאה ביצירת תיקיית עיצוב', 'error');
+    }
+  } catch (e) {
+    toast('שגיאה ביצירת תיקייה: ' + e.message, 'error');
+  }
+}
+
+async function loadDesignFiles(project, design, idx) {
+  const listEl = document.getElementById('design-files-list');
+  if (!listEl || !design.folderId) return;
+  try {
+    const result = await apiCall('getProjectFiles', { folderId: design.folderId });
+    const files  = result.files || [];
+    if (files.length === 0) {
+      listEl.innerHTML = '<p class="text-muted text-sm">אין קבצים עדיין</p>';
+    } else {
+      listEl.innerHTML = files.map(f => `
+        <div class="project-file-item" data-file-id="${escHtml(f.id)}">
+          <span class="file-icon">${fileIcon(f.mimeType)}</span>
+          <a class="file-name" href="${escHtml(f.url)}" target="_blank" rel="noopener">${escHtml(f.name)}</a>
+          <span class="file-size">${formatFileSize(f.size)}</span>
+          <button class="btn-file-delete" onclick="deleteDesignFile('${escHtml(f.id)}', this)" title="מחק">✕</button>
+        </div>`).join('');
+    }
+  } catch (e) {
+    listEl.innerHTML = '<p class="text-muted text-sm">שגיאה בטעינת קבצים</p>';
+  }
+}
+
+async function uploadDesignFile(project, design, idx, file) {
+  if (!design.folderId) { toast('אין תיקיית Drive לעיצוב', 'error'); return; }
+  const MAX = 20 * 1024 * 1024;
+  if (file.size > MAX) { toast(`${file.name} — גדול מ-20MB`, 'error'); return; }
+  toast(`מעלה: ${file.name}…`, 'info');
+  try {
+    const base64 = await fileToBase64(file);
+    const result = await apiCall('uploadFile', {
+      folderId: design.folderId,
+      filename: file.name,
+      base64,
+      mimeType: file.type || 'application/octet-stream'
+    });
+    if (result.error) throw new Error(result.error);
+    toast(`${file.name} הועלה ✓`, 'success');
+    loadDesignFiles(project, design, idx);
+  } catch (e) {
+    toast('שגיאה בהעלאה: ' + e.message, 'error');
+  }
+}
+
+async function deleteDesignFile(fileId, btn) {
+  if (!confirm('למחוק את הקובץ מ-Drive?')) return;
+  try {
+    await apiCall('deleteFile', { fileId });
+    btn.closest('.project-file-item').remove();
+    toast('קובץ נמחק', 'success');
+  } catch (e) {
+    toast('שגיאה במחיקה: ' + e.message, 'error');
+  }
+}
+
 // ================================================================
 // PROJECT DETAIL PANEL
 // ================================================================
@@ -941,6 +1016,7 @@ function openDesignPanel(designIdx) {
   if (!design) return;
 
   S.panelDesignId = designIdx;
+  S.panelDesignTab = 'details';
   renderDesignPanel(project, design, designIdx);
   openPanel('design-panel');
 }
@@ -952,79 +1028,136 @@ function renderDesignPanel(project, design, idx) {
   panel.querySelector('.panel-title').innerHTML =
     `<span>עיצוב:</span> ${escHtml(design.name || `עיצוב ${idx + 1}`)}`;
 
-  const body = panel.querySelector('.panel-body');
-  body.innerHTML = `
-    <div class="panel-section">
-      <div class="section-title">פרטים</div>
-      <div class="field-grid">
-        <div class="field-item full">
-          <span class="field-label">שם עיצוב</span>
-          <div class="field-value editable" data-dfield="name" data-type="text">${escHtml(design.name || '')}</div>
-        </div>
-        <div class="field-item full">
-          <span class="field-label">סטטוס</span>
-          <div class="field-value">
-            <select class="field-edit-select design-status-sel">
-              ${S.statuses.map(s => `<option value="${escHtml(s)}" ${s === (design.status || '') ? 'selected' : ''}>${escHtml(s)}</option>`).join('')}
-            </select>
+  if (!S.panelDesignTab) S.panelDesignTab = 'details';
+
+  const tabsHtml = `
+    <div class="panel-tabs">
+      <button class="panel-tab-btn${S.panelDesignTab === 'details' ? ' active' : ''}" data-dtab="details">פרטים</button>
+      <button class="panel-tab-btn${S.panelDesignTab === 'notes'   ? ' active' : ''}" data-dtab="notes">הערות</button>
+      <button class="panel-tab-btn${S.panelDesignTab === 'files'   ? ' active' : ''}" data-dtab="files">קבצים</button>
+    </div>`;
+
+  let tabContent = '';
+
+  if (S.panelDesignTab === 'details') {
+    tabContent = `
+      <div class="panel-section">
+        <div class="field-grid">
+          <div class="field-item full">
+            <span class="field-label">שם עיצוב</span>
+            <div class="field-value editable" data-dfield="name" data-type="text">${escHtml(design.name || '')}</div>
+          </div>
+          <div class="field-item full">
+            <span class="field-label">סטטוס</span>
+            <div class="field-value">
+              <select class="field-edit-select design-status-sel">
+                ${S.statuses.map(s => `<option value="${escHtml(s)}" ${s === (design.status || '') ? 'selected' : ''}>${escHtml(s)}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="field-item">
+            <span class="field-label">דדליין</span>
+            <div class="field-value editable" data-dfield="deadline" data-type="date">
+              ${design.deadline ? fmt.date(design.deadline) : '<span class="placeholder">ללא</span>'}
+            </div>
+          </div>
+          <div class="field-item">
+            <span class="field-label">רמת דחיפות ${!isBoss ? '(בוס בלבד)' : ''}</span>
+            <div class="field-value ${isBoss ? 'editable' : ''}" data-dfield="priority" data-type="priority">
+              ${renderPriorityDisplay(design.priority || 0, isBoss)}
+            </div>
           </div>
         </div>
-        <div class="field-item">
-          <span class="field-label">דדליין</span>
-          <div class="field-value editable" data-dfield="deadline" data-type="date">
-            ${design.deadline ? fmt.date(design.deadline) : '<span class="placeholder">ללא</span>'}
-          </div>
+      </div>`;
+
+  } else if (S.panelDesignTab === 'notes') {
+    tabContent = `
+      <div class="panel-section">
+        <div class="section-title">הערות</div>
+        <div class="log-list">${renderLogEntries(design.notes || [], 'notes-entry')}</div>
+        <div class="log-add-form">
+          <textarea class="log-textarea" id="new-design-note" placeholder="הוסף הערה..."></textarea>
+          <button class="btn-gold" onclick="addDesignLog('notes')">הוסף הערה</button>
         </div>
-        <div class="field-item">
-          <span class="field-label">רמת דחיפות ${!isBoss ? '(בוס בלבד)' : ''}</span>
-          <div class="field-value ${isBoss ? 'editable' : ''}" data-dfield="priority" data-type="priority">
-            ${renderPriorityDisplay(design.priority || 0, isBoss)}
-          </div>
+      </div>
+      <div class="panel-section">
+        <div class="section-title">מידע חשוב</div>
+        <div class="log-list">${renderLogEntries(design.importantInfo || [], 'info-entry')}</div>
+        <div class="log-add-form">
+          <textarea class="log-textarea" id="new-design-info" placeholder="הוסף מידע חשוב..."></textarea>
+          <button class="btn-gold" onclick="addDesignLog('info')">הוסף מידע</button>
         </div>
-      </div>
-    </div>
+      </div>`;
 
-    <div class="panel-section">
-      <div class="section-title">הערות</div>
-      <div class="log-list">${renderLogEntries(design.notes || [], 'notes-entry')}</div>
-      <div class="log-add-form">
-        <textarea class="log-textarea" id="new-design-note" placeholder="הוסף הערה..."></textarea>
-        <button class="btn-gold" onclick="addDesignLog('notes')">הוסף הערה</button>
-      </div>
-    </div>
-
-    <div class="panel-section">
-      <div class="section-title">מידע חשוב</div>
-      <div class="log-list">${renderLogEntries(design.importantInfo || [], 'info-entry')}</div>
-      <div class="log-add-form">
-        <textarea class="log-textarea" id="new-design-info" placeholder="הוסף מידע חשוב..."></textarea>
-        <button class="btn-gold" onclick="addDesignLog('info')">הוסף מידע</button>
-      </div>
-    </div>
-  `;
-
-  // Status select — direct change handler (no click-to-edit)
-  const statusSel = body.querySelector('.design-status-sel');
-  if (statusSel) {
-    statusSel.addEventListener('change', async () => {
-      const newVal = statusSel.value;
-      if (newVal !== design.status) await updateDesignField(project, idx, 'status', newVal);
-    });
+  } else if (S.panelDesignTab === 'files') {
+    const hasProjFolder = !!project.folderId;
+    tabContent = `
+      <div class="panel-section">
+        <div class="section-title-row">
+          <span class="section-title">קבצי עיצוב</span>
+          ${hasProjFolder
+            ? (design.folderId
+                ? `<label class="btn-upload-file" for="design-file-input">📎 הוסף קובץ</label>
+                   <input type="file" id="design-file-input" class="file-input-hidden" multiple />
+                   <a class="btn-drive-folder" href="https://drive.google.com/drive/folders/${escHtml(design.folderId)}" target="_blank" rel="noopener" title="פתח תיקייה ב-Drive">📁</a>`
+                : '<span class="text-muted text-sm">יוצר תיקייה…</span>')
+            : '<span class="text-muted text-sm">תיקיית Drive תיוצר עם שמירת הפרויקט</span>'}
+        </div>
+        <div class="design-files-list" id="design-files-list">
+          ${design.folderId ? '<p class="text-muted text-sm">טוען קבצים…</p>' : ''}
+        </div>
+      </div>`;
   }
 
-  // Other editable fields (name, deadline, priority)
-  body.querySelectorAll('.field-value.editable').forEach(el => {
-    el.addEventListener('click', () => startDesignInlineEdit(el, project, design, idx));
+  const body = panel.querySelector('.panel-body');
+  body.innerHTML = tabsHtml + `<div class="panel-tab-content">${tabContent}</div>`;
+
+  // Tab click handlers
+  body.querySelectorAll('.panel-tab-btn[data-dtab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      S.panelDesignTab = btn.dataset.dtab;
+      renderDesignPanel(project, project.designs[idx], idx);
+    });
   });
 
-  if (isBoss) {
-    body.querySelectorAll('.priority-star-btn').forEach(btn => {
-      btn.addEventListener('click', async e => {
-        e.stopPropagation();
-        await updateDesignField(project, idx, 'priority', parseInt(btn.dataset.value));
-        renderDesignPanel(project, project.designs[idx], idx);
+  // Details tab wiring
+  if (S.panelDesignTab === 'details') {
+    const statusSel = body.querySelector('.design-status-sel');
+    if (statusSel) {
+      statusSel.addEventListener('change', async () => {
+        const newVal = statusSel.value;
+        if (newVal !== design.status) await updateDesignField(project, idx, 'status', newVal);
       });
+    }
+    body.querySelectorAll('.field-value.editable').forEach(el => {
+      el.addEventListener('click', () => startDesignInlineEdit(el, project, design, idx));
     });
+    if (isBoss) {
+      body.querySelectorAll('.priority-star-btn').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          e.stopPropagation();
+          await updateDesignField(project, idx, 'priority', parseInt(btn.dataset.value));
+          renderDesignPanel(project, project.designs[idx], idx);
+        });
+      });
+    }
+  }
+
+  // Files tab wiring
+  if (S.panelDesignTab === 'files' && project.folderId) {
+    if (design.folderId) {
+      loadDesignFiles(project, design, idx);
+      const fileInput = body.querySelector('#design-file-input');
+      if (fileInput) {
+        fileInput.addEventListener('change', async e => {
+          const files = [...e.target.files];
+          for (const f of files) await uploadDesignFile(project, design, idx, f);
+          e.target.value = '';
+        });
+      }
+    } else {
+      getOrCreateDesignFolderAndRender(project, design, idx);
+    }
   }
 }
 
