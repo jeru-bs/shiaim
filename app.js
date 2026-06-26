@@ -54,6 +54,7 @@ const S = {
   statuses:  [],
   changes:   [],
   clients:   [],
+  ideas:     [],
   lastSeen:  null,
   newCount:  0,
   view:      'active',  // 'active' | 'completed'
@@ -65,6 +66,9 @@ const S = {
   currentWing:    null,   // null | 'clients' | 'ideas' | 'products'
   clientSearch:   '',
   clientPanelId:  null,
+  ideaSearch:     '',
+  ideaStageFilt:  '',
+  ideaPanelId:    null,
 };
 
 // ================================================================
@@ -140,18 +144,20 @@ async function apiCall(action, data = {}) {
 async function loadAll() {
   showSpinner(true);
   try {
-    const [pRes, sRes, lsRes, cRes, clRes] = await Promise.all([
+    const [pRes, sRes, lsRes, cRes, clRes, idRes] = await Promise.all([
       apiCall('getProjects'),
       apiCall('getStatuses'),
       apiCall('getLastSeen', { user: S.user.username }),
       apiCall('getChanges'),
       apiCall('getClients'),
+      apiCall('getIdeas'),
     ]);
 
     S.projects = pRes.projects || [];
     S.statuses  = sRes.statuses || CONFIG.DEFAULT_STATUSES;
     S.changes   = cRes.changes  || [];
     S.clients   = clRes.clients || [];
+    S.ideas     = idRes.ideas   || [];
     S.lastSeen  = lsRes.lastSeen || null;
 
     // Count new changes since last login
@@ -1651,6 +1657,35 @@ function wireEvents() {
     });
   });
 
+  document.getElementById('btn-delete-idea').addEventListener('click', () => {
+    if (!S.ideaPanelId) return;
+    const idea = S.ideas.find(i => i.id === S.ideaPanelId);
+    openConfirmModal({
+      title:    'מחיקת רעיון',
+      message:  `למחוק את "${idea?.name || 'הרעיון'}"?`,
+      btnLabel: 'מחק',
+      btnClass: 'btn-danger',
+      action:   async () => {
+        await deleteIdeaData(S.ideaPanelId);
+        closePanel('idea-panel');
+        renderIdeasWing();
+      },
+    });
+  });
+
+  document.getElementById('btn-convert-idea').addEventListener('click', () => {
+    if (!S.ideaPanelId) return;
+    const idea = S.ideas.find(i => i.id === S.ideaPanelId);
+    if (idea && idea.convertedProjectId) return;
+    openConfirmModal({
+      title:    'הפיכה לפרויקט פעיל',
+      message:  `להפוך את "${idea?.name || 'הרעיון'}" לפרויקט פעיל?`,
+      btnLabel: 'הפוך לפרויקט',
+      btnClass: 'btn-gold',
+      action:   () => convertIdeaToProject(S.ideaPanelId),
+    });
+  });
+
   // Panel close buttons
   document.querySelectorAll('.btn-panel-close').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1717,6 +1752,7 @@ function openWing(wingName) {
 function closeWing() {
   S.currentWing = null;
   closePanel('client-panel');
+  closePanel('idea-panel');
   document.getElementById('section-header-bar').classList.remove('hidden');
   document.getElementById('filters-bar').classList.remove('hidden');
   document.getElementById('project-list').classList.remove('hidden');
@@ -1728,7 +1764,7 @@ function closeWing() {
 function renderWingContent() {
   switch (S.currentWing) {
     case 'clients':  renderClientsWing(); break;
-    case 'ideas':    renderComingSoonWing('💡', 'רעיונות'); break;
+    case 'ideas':    renderIdeasWing(); break;
     case 'products': renderComingSoonWing('📦', 'מוצרים וספקים'); break;
   }
 }
@@ -1923,6 +1959,346 @@ async function submitClientPanel() {
     S.clientPanelId = saved.id;
     document.getElementById('client-panel').querySelector('.panel-title').textContent = saved.name;
     document.getElementById('btn-delete-client').classList.remove('hidden');
+  }
+}
+
+// ================================================================
+// IDEAS WING
+// ================================================================
+const IDEA_STAGES = [
+  { key: '💡',  label: 'רעיון'          },
+  { key: '🔍',  label: 'מחקר ספקים'    },
+  { key: '🎨',  label: 'עיצוב'          },
+  { key: '🏭',  label: 'ייצור'          },
+  { key: '🚢',  label: 'משלוח'          },
+];
+
+async function saveIdeaData(idea) {
+  const res = await apiCall('saveIdea', { idea });
+  if (res && res.idea) {
+    const idx = S.ideas.findIndex(i => i.id === res.idea.id);
+    if (idx >= 0) S.ideas[idx] = res.idea;
+    else S.ideas.push(res.idea);
+    return res.idea;
+  }
+  return null;
+}
+
+async function deleteIdeaData(id) {
+  await apiCall('deleteIdea', { id });
+  S.ideas = S.ideas.filter(i => i.id !== id);
+}
+
+function renderIdeasWing() {
+  const search = S.ideaSearch.trim().toLowerCase();
+  const stageFilt = S.ideaStageFilt;
+
+  const filtered = S.ideas.filter(idea => {
+    if (search && !idea.name.toLowerCase().includes(search) && !(idea.description||'').toLowerCase().includes(search)) return false;
+    if (stageFilt && idea.stage !== stageFilt) return false;
+    return true;
+  });
+
+  // Sort: converted to bottom
+  filtered.sort((a, b) => {
+    if (!!a.convertedProjectId !== !!b.convertedProjectId) return a.convertedProjectId ? 1 : -1;
+    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+  });
+
+  const container = document.getElementById('wing-content');
+  container.innerHTML = `
+    <div class="wing-header">
+      <button class="btn-wing-back" onclick="closeWing()">← חזרה</button>
+      <div class="wing-title">💡 רעיונות</div>
+      <button class="btn-add-idea btn-primary" onclick="openIdeaPanel(null)">+ רעיון חדש</button>
+    </div>
+    <div class="wing-toolbar">
+      <input class="wing-search" type="text" placeholder="חיפוש רעיון..." value="${escH(S.ideaSearch)}"
+             oninput="S.ideaSearch=this.value;renderIdeasWing()">
+    </div>
+    <div class="ideas-stage-filter">
+      <button class="stage-filter-btn ${!stageFilt ? 'active' : ''}" onclick="S.ideaStageFilt='';renderIdeasWing()">הכל</button>
+      ${IDEA_STAGES.map(s => `
+        <button class="stage-filter-btn ${stageFilt === s.key ? 'active' : ''}" onclick="S.ideaStageFilt='${s.key}';renderIdeasWing()">
+          ${s.key} ${s.label}
+        </button>`).join('')}
+    </div>
+    <div class="ideas-list">
+      ${filtered.length === 0
+        ? `<div class="empty-state">אין רעיונות להצגה</div>`
+        : filtered.map(idea => renderIdeaRow(idea)).join('')}
+    </div>
+  `;
+}
+
+function renderIdeaRow(idea) {
+  const stage = IDEA_STAGES.find(s => s.key === idea.stage);
+  const stageLabel = stage ? `${stage.key} ${stage.label}` : idea.stage || '';
+  const converted = !!idea.convertedProjectId;
+  const clientNames = (idea.clients || []).map(id => {
+    const c = S.clients.find(x => x.id === id);
+    return c ? c.name : '';
+  }).filter(Boolean).join(', ');
+
+  return `
+    <div class="idea-row ${converted ? 'idea-converted' : ''}" onclick="openIdeaPanel('${idea.id}')">
+      <div class="idea-row-main">
+        <span class="idea-name">${escH(idea.name)}</span>
+        ${converted ? '<span class="badge-converted">✓ הפך לפרויקט</span>' : ''}
+      </div>
+      <div class="idea-row-meta">
+        ${stageLabel ? `<span class="stage-badge stage-${(idea.stage||'').replace(/[^\w]/g,'_')}">${stageLabel}</span>` : ''}
+        ${clientNames ? `<span class="idea-clients-tag">👤 ${escH(clientNames)}</span>` : ''}
+        ${idea.category ? `<span class="idea-category-tag">${escH(idea.category)}</span>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function openIdeaPanel(id) {
+  S.ideaPanelId = id;
+  const idea = id ? S.ideas.find(i => i.id === id) : null;
+  const panel = document.getElementById('idea-panel');
+  panel.querySelector('.panel-title').textContent = idea ? idea.name : 'רעיון חדש';
+  renderIdeaPanel(idea);
+  openPanel('idea-panel');
+
+  const convertBtn = document.getElementById('btn-convert-idea');
+  const deleteBtn  = document.getElementById('btn-delete-idea');
+  if (idea) {
+    deleteBtn.classList.remove('hidden');
+    convertBtn.classList.remove('hidden');
+    if (idea.convertedProjectId) {
+      convertBtn.textContent = '✓ הופך לפרויקט';
+      convertBtn.disabled = true;
+      convertBtn.classList.add('btn-disabled');
+    } else {
+      convertBtn.textContent = '🚀 הפוך לפרויקט פעיל';
+      convertBtn.disabled = false;
+      convertBtn.classList.remove('btn-disabled');
+    }
+  } else {
+    deleteBtn.classList.add('hidden');
+    convertBtn.classList.add('hidden');
+  }
+}
+
+function renderIdeaPanel(idea) {
+  const panel = document.getElementById('idea-panel');
+  const body  = panel.querySelector('.panel-body');
+
+  const clientsMultiSelect = S.clients.map(c => {
+    const checked = idea && Array.isArray(idea.clients) && idea.clients.includes(c.id);
+    return `
+      <label class="client-checkbox-item">
+        <input type="checkbox" name="idea-client" value="${c.id}" ${checked ? 'checked' : ''}>
+        ${escH(c.name)}
+      </label>
+    `;
+  }).join('');
+
+  const stageOptions = IDEA_STAGES.map(s =>
+    `<option value="${s.key}" ${idea && idea.stage === s.key ? 'selected' : ''}>${s.key} ${s.label}</option>`
+  ).join('');
+
+  body.innerHTML = `
+    <div class="panel-tabs">
+      <button class="panel-tab active" onclick="switchIdeaTab('details',this)">פרטים</button>
+      <button class="panel-tab" onclick="switchIdeaTab('files',this)">קבצים</button>
+      <button class="panel-tab" onclick="switchIdeaTab('notes',this)">הערות</button>
+    </div>
+    <div id="idea-tab-details" class="panel-tab-content active">
+      <div class="form-group">
+        <label>שם הרעיון *</label>
+        <input id="idea-name" type="text" class="form-input" value="${escH(idea ? idea.name : '')}" placeholder="שם הרעיון">
+      </div>
+      <div class="form-group">
+        <label>תיאור</label>
+        <textarea id="idea-description" class="form-input" rows="3" placeholder="תיאור קצר...">${escH(idea ? idea.description || '' : '')}</textarea>
+      </div>
+      <div class="form-group">
+        <label>שלב</label>
+        <select id="idea-stage" class="form-input">
+          <option value="">-- בחר שלב --</option>
+          ${stageOptions}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>קטגוריה</label>
+        <input id="idea-category" type="text" class="form-input" value="${escH(idea ? idea.category || '' : '')}" placeholder="לדוגמה: ביגוד, אלקטרוניקה...">
+      </div>
+      <div class="form-group">
+        <label>לקוחות קשורים</label>
+        <div class="clients-multi-select">
+          ${clientsMultiSelect || '<span class="empty-note">אין לקוחות רשומים</span>'}
+        </div>
+      </div>
+      <button class="btn-primary btn-save-idea" onclick="submitIdeaPanel()">💾 שמור</button>
+    </div>
+    <div id="idea-tab-files" class="panel-tab-content hidden">
+      ${idea && idea.folderId
+        ? `<div class="files-loading">טוען קבצים...</div>`
+        : `<div class="empty-note">שמור את הרעיון תחילה כדי להעלות קבצים</div>`}
+    </div>
+    <div id="idea-tab-notes" class="panel-tab-content hidden">
+      <div class="form-group">
+        <label>הערות</label>
+        <textarea id="idea-notes" class="form-input notes-area" rows="10" placeholder="הערות חופשיות...">${escH(idea ? idea.notes || '' : '')}</textarea>
+      </div>
+      <button class="btn-primary" onclick="saveIdeaNotes()">💾 שמור הערות</button>
+    </div>
+  `;
+
+  if (idea && idea.folderId) {
+    loadIdeaFiles(idea.folderId);
+  }
+}
+
+function switchIdeaTab(tab, btn) {
+  const body = document.getElementById('idea-panel').querySelector('.panel-body');
+  body.querySelectorAll('.panel-tab').forEach(b => b.classList.remove('active'));
+  body.querySelectorAll('.panel-tab-content').forEach(c => c.classList.remove('active','hidden'));
+  body.querySelectorAll('.panel-tab-content').forEach(c => c.classList.add('hidden'));
+  btn.classList.add('active');
+  const el = document.getElementById(`idea-tab-${tab}`);
+  if (el) { el.classList.remove('hidden'); el.classList.add('active'); }
+}
+
+async function loadIdeaFiles(folderId) {
+  const container = document.getElementById('idea-tab-files');
+  if (!container) return;
+  const res = await apiCall('getFiles', { folderId });
+  const files = res && res.files ? res.files : [];
+  if (!files.length) {
+    container.innerHTML = `
+      <div class="empty-note">אין קבצים עדיין</div>
+      ${renderIdeaUploadZone(folderId)}
+    `;
+    return;
+  }
+  container.innerHTML = `
+    <div class="files-list">
+      ${files.map(f => `
+        <div class="file-item">
+          <a href="${f.url}" target="_blank" class="file-link">📄 ${escH(f.name)}</a>
+          <button class="btn-file-delete" onclick="deleteIdeaFile('${f.id}','${folderId}')">✕</button>
+        </div>
+      `).join('')}
+    </div>
+    ${renderIdeaUploadZone(folderId)}
+  `;
+}
+
+function renderIdeaUploadZone(folderId) {
+  return `
+    <div class="upload-zone">
+      <input type="file" id="idea-file-input" style="display:none" onchange="uploadIdeaFile(this,'${folderId}')">
+      <button class="btn-upload" onclick="document.getElementById('idea-file-input').click()">📎 העלה קובץ</button>
+    </div>
+  `;
+}
+
+async function uploadIdeaFile(input, folderId) {
+  const file = input.files[0];
+  if (!file) return;
+  const base64 = await fileToBase64(file);
+  showSpinner(true);
+  await apiCall('uploadFile', { folderId, filename: file.name, base64, mimeType: file.type });
+  showSpinner(false);
+  loadIdeaFiles(folderId);
+}
+
+async function deleteIdeaFile(fileId, folderId) {
+  if (!confirm('למחוק קובץ זה?')) return;
+  await apiCall('deleteFile', { fileId });
+  loadIdeaFiles(folderId);
+}
+
+async function saveIdeaNotes() {
+  const notesEl = document.getElementById('idea-notes');
+  if (!notesEl) return;
+  const idea = S.ideas.find(i => i.id === S.ideaPanelId);
+  if (!idea) return;
+  idea.notes = notesEl.value;
+  showSpinner(true);
+  await saveIdeaData(idea);
+  showSpinner(false);
+  showToast('הערות נשמרו');
+}
+
+async function submitIdeaPanel() {
+  const nameEl = document.getElementById('idea-name');
+  if (!nameEl || !nameEl.value.trim()) { showToast('יש להזין שם רעיון'); return; }
+
+  const existing = S.ideaPanelId ? S.ideas.find(i => i.id === S.ideaPanelId) : null;
+  const checkedClients = Array.from(document.querySelectorAll('input[name="idea-client"]:checked')).map(el => el.value);
+
+  const idea = {
+    ...(existing || {}),
+    name:        nameEl.value.trim(),
+    description: (document.getElementById('idea-description') || {}).value || '',
+    stage:       (document.getElementById('idea-stage') || {}).value || '',
+    category:    (document.getElementById('idea-category') || {}).value || '',
+    clients:     checkedClients,
+    notes:       existing ? (existing.notes || '') : '',
+  };
+
+  showSpinner(true);
+  const saved = await saveIdeaData(idea);
+  showSpinner(false);
+
+  if (saved) {
+    S.ideaPanelId = saved.id;
+    document.getElementById('idea-panel').querySelector('.panel-title').textContent = saved.name;
+    document.getElementById('btn-delete-idea').classList.remove('hidden');
+    const convertBtn = document.getElementById('btn-convert-idea');
+    convertBtn.classList.remove('hidden');
+    showToast('הרעיון נשמר');
+    renderIdeasWing();
+  }
+}
+
+async function convertIdeaToProject(id) {
+  const idea = S.ideas.find(i => i.id === id);
+  if (!idea || idea.convertedProjectId) return;
+
+  // Build a project from the idea
+  const clientId = Array.isArray(idea.clients) && idea.clients.length > 0 ? idea.clients[0] : '';
+  const clientObj = S.clients.find(c => c.id === clientId);
+
+  const project = {
+    name:          idea.name,
+    client:        clientObj ? clientObj.name : '',
+    type:          idea.category || '',
+    status:        S.statuses[0] || 'בתכנון',
+    priority:      'בינוני',
+    notes:         idea.description || '',
+    importantInfo: '',
+    designs:       [],
+    completed:     false,
+    createdBy:     S.user.username,
+  };
+
+  showSpinner(true);
+  const pRes = await apiCall('saveProject', { project });
+  if (pRes && pRes.project) {
+    S.projects.push(pRes.project);
+    // Mark idea as converted
+    idea.convertedProjectId = pRes.project.id;
+    await saveIdeaData(idea);
+    showSpinner(false);
+    showToast('הרעיון הפך לפרויקט פעיל ✓');
+    renderIdeasWing();
+    // Update panel button
+    const convertBtn = document.getElementById('btn-convert-idea');
+    if (convertBtn) {
+      convertBtn.textContent = '✓ הופך לפרויקט';
+      convertBtn.disabled = true;
+      convertBtn.classList.add('btn-disabled');
+    }
+  } else {
+    showSpinner(false);
+    showToast('שגיאה ביצירת פרויקט');
   }
 }
 

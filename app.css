@@ -1481,3 +1481,140 @@ a { text-decoration: none; color: inherit; }
 }
 
 .client-row { cursor: pointer; }
+
+/* ── Ideas Wing ── */
+.ideas-stage-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 16px 4px;
+  direction: rtl;
+}
+.stage-filter-btn {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  font-family: inherit;
+}
+.stage-filter-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.stage-filter-btn:hover:not(.active) {
+  background: rgba(255,255,255,0.14);
+}
+
+.ideas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 16px;
+}
+
+.idea-row {
+  background: rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background 0.18s;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.idea-row:hover { background: rgba(255,255,255,0.11); }
+.idea-row.idea-converted {
+  opacity: 0.55;
+  background: rgba(255,255,255,0.03);
+}
+
+.idea-row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.idea-name { font-weight: 600; font-size: 0.95rem; }
+.badge-converted {
+  font-size: 0.72rem;
+  background: rgba(90,200,120,0.18);
+  color: #5ac878;
+  border-radius: 10px;
+  padding: 2px 8px;
+}
+.idea-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.stage-badge {
+  font-size: 0.72rem;
+  border-radius: 10px;
+  padding: 2px 8px;
+  background: rgba(100,140,255,0.18);
+  color: #a8bdff;
+}
+.idea-clients-tag, .idea-category-tag {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 2px 8px;
+}
+
+/* Multi-select clients */
+.clients-multi-select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.client-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.client-checkbox-item input[type="checkbox"] {
+  accent-color: var(--primary);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+.empty-note {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  text-align: center;
+  padding: 8px 0;
+}
+
+/* Gold button (convert to project) */
+.btn-gold {
+  background: linear-gradient(135deg, #d4a800, #f0c430);
+  color: #1a1400;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.18s;
+}
+.btn-gold:hover { opacity: 0.88; }
+.btn-gold.btn-disabled, .btn-gold:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.notes-area { min-height: 180px; resize: vertical; }
