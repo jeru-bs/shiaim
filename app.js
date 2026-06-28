@@ -2219,6 +2219,18 @@ function renderManufacturerPanel(mfr) {
       <td><button class="btn-icon-sm" onclick="removePriceRow(this)" title="מחק">✕</button></td>
     </tr>`).join('');
 
+  const docsControls = mfr.folderId
+    ? `<div style="display:flex;gap:0.4rem;align-items:center;">
+         <label class="btn-upload-file" for="mfr-file-input" style="cursor:pointer">+ הוסף</label>
+         <input type="file" id="mfr-file-input" class="file-input-hidden" multiple />
+         <a class="btn-drive-folder" href="https://drive.google.com/drive/folders/${escHtml(mfr.folderId)}" target="_blank" rel="noopener" title="פתח ב-Drive">📁</a>
+       </div>`
+    : `<button class="btn-secondary btn-sm" onclick="createManufacturerFolder('${escHtml(mfr.id)}')">📁 צור תיקייה</button>`;
+
+  const docsPlaceholder = mfr.folderId
+    ? '<p class="text-muted text-sm">טוען קבצים…</p>'
+    : '<p class="text-muted text-sm">צור תיקייה כדי לצרף קבצים</p>';
+
   panel.innerHTML = `
     <div class="panel-header">
       <button class="btn-panel-close" onclick="closePanel('manufacturer-panel')">✕</button>
@@ -2262,11 +2274,31 @@ function renderManufacturerPanel(mfr) {
         <div class="panel-section-header">הערות</div>
         <textarea class="form-input" id="mfr-notes" rows="3" placeholder="הערות...">${escHtml(mfr.notes || '')}</textarea>
       </div>
+
+      <div class="panel-section">
+        <div class="panel-section-header" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>📎 מסמכים</span>
+          ${docsControls}
+        </div>
+        <div class="project-files-list" id="mfr-files-list">${docsPlaceholder}</div>
+      </div>
     </div>
     <div class="panel-footer">
       <button class="btn-gold" onclick="saveMfrPanel('${escHtml(mfr.id)}')">שמור</button>
       <button class="btn-danger btn-sm" onclick="deleteManufacturerConfirm('${escHtml(mfr.id)}')">מחק</button>
     </div>`;
+
+  // File upload listener + initial load
+  if (mfr.folderId) {
+    const fi = panel.querySelector('#mfr-file-input');
+    if (fi) {
+      fi.addEventListener('change', async e => {
+        for (const f of [...e.target.files]) await uploadManufacturerFile(mfr, f);
+        e.target.value = '';
+      });
+    }
+    loadManufacturerFiles(mfr);
+  }
 }
 
 function addPriceRow() {
@@ -2290,6 +2322,72 @@ function collectPriceTable() {
     price: tr.querySelector('.price-val')?.value.trim() || ''
   })).filter(r => r.qty || r.price);
 }
+
+// ── Manufacturer documents ─────────────────────────────────────────────────
+
+async function createManufacturerFolder(id) {
+  const mfr = S.manufacturers.find(m => m.id === id);
+  if (!mfr) return;
+  showSpinner(true);
+  try {
+    const res = await apiCall('getOrCreateManufacturerFolder', { mfrId: mfr.id, mfrName: mfr.name });
+    mfr.folderId = res.folderId;
+    await saveManufacturerData(mfr);
+    renderManufacturerPanel(mfr);
+  } catch(e) {
+    toast('שגיאה ביצירת תיקייה: ' + e.message, 'error');
+  } finally { showSpinner(false); }
+}
+
+async function loadManufacturerFiles(mfr) {
+  const listEl = document.getElementById('mfr-files-list');
+  if (!listEl || !mfr.folderId) return;
+  try {
+    const res = await apiCall('getProjectFiles', { folderId: mfr.folderId });
+    const files = res.files || [];
+    if (!files.length) {
+      listEl.innerHTML = '<p class="text-muted text-sm">אין קבצים עדיין</p>';
+      return;
+    }
+    listEl.innerHTML = files.map(f => `
+      <div class="project-file-item">
+        <a href="${escHtml(f.url)}" target="_blank" rel="noopener" class="file-link">📄 ${escHtml(f.name)}</a>
+        <button class="btn-icon-sm" onclick="deleteMfrFile('${escHtml(f.id)}', this)" title="מחק">🗑</button>
+      </div>`).join('');
+  } catch(e) {
+    if (listEl) listEl.innerHTML = '<p class="text-muted text-sm">שגיאה בטעינת קבצים</p>';
+  }
+}
+
+async function uploadManufacturerFile(mfr, file) {
+  toast(`מעלה: ${file.name}…`, 'info');
+  try {
+    const base64 = await fileToBase64(file);
+    await apiCall('uploadFile', {
+      folderId: mfr.folderId,
+      filename: file.name,
+      base64,
+      mimeType: file.type || 'application/octet-stream'
+    });
+    toast(`${file.name} הועלה ✓`, 'success');
+    await loadManufacturerFiles(mfr);
+  } catch(e) {
+    toast('שגיאה בהעלאה: ' + e.message, 'error');
+  }
+}
+
+async function deleteMfrFile(fileId, btn) {
+  if (!confirm('למחוק את הקובץ מ-Drive?')) return;
+  try {
+    await apiCall('deleteFile', { fileId });
+    btn.closest('.project-file-item').remove();
+    toast('קובץ נמחק', 'success');
+  } catch(e) {
+    toast('שגיאה: ' + e.message, 'error');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function saveMfrPanel(id) {
   const mfr = S.manufacturers.find(m => m.id === id);
