@@ -1,3 +1,4 @@
+
 /* ================================================================
    התנהלות שוטפת - שיאים | Main Application
    ================================================================ */
@@ -28,7 +29,7 @@ function savePasswords(passwords) {
 }
 
 const CONFIG = {
-  API_URL: localStorage.getItem('shiaim_api_url') || 'https://script.google.com/macros/s/AKfycbwElreyCeSg2yIuqbg3ZJ63IcY3_kPqriW_3zQymCvxwkgxjgggkL35J0jKgXoiRFbs/exec',
+  API_URL: localStorage.getItem('shiaim_api_url') || '',
 
   USERS: {
     'aharon': { displayName: 'אהרון', role: 'user'  },
@@ -53,8 +54,6 @@ const S = {
   projects:  [],
   statuses:  [],
   changes:   [],
-  clients:   [],
-  ideas:     [],
   lastSeen:  null,
   newCount:  0,
   view:      'active',  // 'active' | 'completed'
@@ -62,13 +61,11 @@ const S = {
   panelProjectId: null,
   panelDesignId:  null,
   panelTab:       'details',
-  panelDesignTab: 'details',
-  currentWing:    null,   // null | 'clients' | 'ideas' | 'products'
-  clientSearch:   '',
-  clientPanelId:  null,
-  ideaSearch:     '',
-  ideaStageFilt:  '',
-  ideaPanelId:    null,
+  panelIdeaId:   null,
+  panelClientId: null,
+  currentWing:   null,
+  ideas:         [],
+  clients:       [],
 };
 
 // ================================================================
@@ -144,20 +141,16 @@ async function apiCall(action, data = {}) {
 async function loadAll() {
   showSpinner(true);
   try {
-    const [pRes, sRes, lsRes, cRes, clRes, idRes] = await Promise.all([
+    const [pRes, sRes, lsRes, cRes] = await Promise.all([
       apiCall('getProjects'),
       apiCall('getStatuses'),
       apiCall('getLastSeen', { user: S.user.username }),
       apiCall('getChanges'),
-      apiCall('getClients'),
-      apiCall('getIdeas'),
     ]);
 
     S.projects = pRes.projects || [];
     S.statuses  = sRes.statuses || CONFIG.DEFAULT_STATUSES;
     S.changes   = cRes.changes  || [];
-    S.clients   = clRes.clients || [];
-    S.ideas     = idRes.ideas   || [];
     S.lastSeen  = lsRes.lastSeen || null;
 
     // Count new changes since last login
@@ -593,80 +586,6 @@ async function deleteProjectFile(fileId, btn) {
   }
 }
 
-// ── Design file functions ──
-async function getOrCreateDesignFolderAndRender(project, design, idx) {
-  try {
-    const result = await apiCall('getOrCreateDesignFolder', {
-      projectFolderId: project.folderId,
-      designName: design.name || `עיצוב ${idx + 1}`
-    });
-    if (result.folderId) {
-      design.folderId = result.folderId;
-      project.designs[idx] = design;
-      await saveProject(project);
-      renderDesignPanel(project, design, idx);
-    } else {
-      toast('שגיאה ביצירת תיקיית עיצוב', 'error');
-    }
-  } catch (e) {
-    toast('שגיאה ביצירת תיקייה: ' + e.message, 'error');
-  }
-}
-
-async function loadDesignFiles(project, design, idx) {
-  const listEl = document.getElementById('design-files-list');
-  if (!listEl || !design.folderId) return;
-  try {
-    const result = await apiCall('getProjectFiles', { folderId: design.folderId });
-    const files  = result.files || [];
-    if (files.length === 0) {
-      listEl.innerHTML = '<p class="text-muted text-sm">אין קבצים עדיין</p>';
-    } else {
-      listEl.innerHTML = files.map(f => `
-        <div class="project-file-item" data-file-id="${escHtml(f.id)}">
-          <span class="file-icon">${fileIcon(f.mimeType)}</span>
-          <a class="file-name" href="${escHtml(f.url)}" target="_blank" rel="noopener">${escHtml(f.name)}</a>
-          <span class="file-size">${formatFileSize(f.size)}</span>
-          <button class="btn-file-delete" onclick="deleteDesignFile('${escHtml(f.id)}', this)" title="מחק">✕</button>
-        </div>`).join('');
-    }
-  } catch (e) {
-    listEl.innerHTML = '<p class="text-muted text-sm">שגיאה בטעינת קבצים</p>';
-  }
-}
-
-async function uploadDesignFile(project, design, idx, file) {
-  if (!design.folderId) { toast('אין תיקיית Drive לעיצוב', 'error'); return; }
-  const MAX = 20 * 1024 * 1024;
-  if (file.size > MAX) { toast(`${file.name} — גדול מ-20MB`, 'error'); return; }
-  toast(`מעלה: ${file.name}…`, 'info');
-  try {
-    const base64 = await fileToBase64(file);
-    const result = await apiCall('uploadFile', {
-      folderId: design.folderId,
-      filename: file.name,
-      base64,
-      mimeType: file.type || 'application/octet-stream'
-    });
-    if (result.error) throw new Error(result.error);
-    toast(`${file.name} הועלה ✓`, 'success');
-    loadDesignFiles(project, design, idx);
-  } catch (e) {
-    toast('שגיאה בהעלאה: ' + e.message, 'error');
-  }
-}
-
-async function deleteDesignFile(fileId, btn) {
-  if (!confirm('למחוק את הקובץ מ-Drive?')) return;
-  try {
-    await apiCall('deleteFile', { fileId });
-    btn.closest('.project-file-item').remove();
-    toast('קובץ נמחק', 'success');
-  } catch (e) {
-    toast('שגיאה במחיקה: ' + e.message, 'error');
-  }
-}
-
 // ================================================================
 // PROJECT DETAIL PANEL
 // ================================================================
@@ -1028,7 +947,6 @@ function openDesignPanel(designIdx) {
   if (!design) return;
 
   S.panelDesignId = designIdx;
-  S.panelDesignTab = 'details';
   renderDesignPanel(project, design, designIdx);
   openPanel('design-panel');
 }
@@ -1040,136 +958,79 @@ function renderDesignPanel(project, design, idx) {
   panel.querySelector('.panel-title').innerHTML =
     `<span>עיצוב:</span> ${escHtml(design.name || `עיצוב ${idx + 1}`)}`;
 
-  if (!S.panelDesignTab) S.panelDesignTab = 'details';
-
-  const tabsHtml = `
-    <div class="panel-tabs">
-      <button class="panel-tab-btn${S.panelDesignTab === 'details' ? ' active' : ''}" data-dtab="details">פרטים</button>
-      <button class="panel-tab-btn${S.panelDesignTab === 'notes'   ? ' active' : ''}" data-dtab="notes">הערות</button>
-      <button class="panel-tab-btn${S.panelDesignTab === 'files'   ? ' active' : ''}" data-dtab="files">קבצים</button>
-    </div>`;
-
-  let tabContent = '';
-
-  if (S.panelDesignTab === 'details') {
-    tabContent = `
-      <div class="panel-section">
-        <div class="field-grid">
-          <div class="field-item full">
-            <span class="field-label">שם עיצוב</span>
-            <div class="field-value editable" data-dfield="name" data-type="text">${escHtml(design.name || '')}</div>
-          </div>
-          <div class="field-item full">
-            <span class="field-label">סטטוס</span>
-            <div class="field-value">
-              <select class="field-edit-select design-status-sel">
-                ${S.statuses.map(s => `<option value="${escHtml(s)}" ${s === (design.status || '') ? 'selected' : ''}>${escHtml(s)}</option>`).join('')}
-              </select>
-            </div>
-          </div>
-          <div class="field-item">
-            <span class="field-label">דדליין</span>
-            <div class="field-value editable" data-dfield="deadline" data-type="date">
-              ${design.deadline ? fmt.date(design.deadline) : '<span class="placeholder">ללא</span>'}
-            </div>
-          </div>
-          <div class="field-item">
-            <span class="field-label">רמת דחיפות ${!isBoss ? '(בוס בלבד)' : ''}</span>
-            <div class="field-value ${isBoss ? 'editable' : ''}" data-dfield="priority" data-type="priority">
-              ${renderPriorityDisplay(design.priority || 0, isBoss)}
-            </div>
+  const body = panel.querySelector('.panel-body');
+  body.innerHTML = `
+    <div class="panel-section">
+      <div class="section-title">פרטים</div>
+      <div class="field-grid">
+        <div class="field-item full">
+          <span class="field-label">שם עיצוב</span>
+          <div class="field-value editable" data-dfield="name" data-type="text">${escHtml(design.name || '')}</div>
+        </div>
+        <div class="field-item full">
+          <span class="field-label">סטטוס</span>
+          <div class="field-value">
+            <select class="field-edit-select design-status-sel">
+              ${S.statuses.map(s => `<option value="${escHtml(s)}" ${s === (design.status || '') ? 'selected' : ''}>${escHtml(s)}</option>`).join('')}
+            </select>
           </div>
         </div>
-      </div>`;
-
-  } else if (S.panelDesignTab === 'notes') {
-    tabContent = `
-      <div class="panel-section">
-        <div class="section-title">הערות</div>
-        <div class="log-list">${renderLogEntries(design.notes || [], 'notes-entry')}</div>
-        <div class="log-add-form">
-          <textarea class="log-textarea" id="new-design-note" placeholder="הוסף הערה..."></textarea>
-          <button class="btn-gold" onclick="addDesignLog('notes')">הוסף הערה</button>
+        <div class="field-item">
+          <span class="field-label">דדליין</span>
+          <div class="field-value editable" data-dfield="deadline" data-type="date">
+            ${design.deadline ? fmt.date(design.deadline) : '<span class="placeholder">ללא</span>'}
+          </div>
+        </div>
+        <div class="field-item">
+          <span class="field-label">רמת דחיפות ${!isBoss ? '(בוס בלבד)' : ''}</span>
+          <div class="field-value ${isBoss ? 'editable' : ''}" data-dfield="priority" data-type="priority">
+            ${renderPriorityDisplay(design.priority || 0, isBoss)}
+          </div>
         </div>
       </div>
-      <div class="panel-section">
-        <div class="section-title">מידע חשוב</div>
-        <div class="log-list">${renderLogEntries(design.importantInfo || [], 'info-entry')}</div>
-        <div class="log-add-form">
-          <textarea class="log-textarea" id="new-design-info" placeholder="הוסף מידע חשוב..."></textarea>
-          <button class="btn-gold" onclick="addDesignLog('info')">הוסף מידע</button>
-        </div>
-      </div>`;
+    </div>
 
-  } else if (S.panelDesignTab === 'files') {
-    const hasProjFolder = !!project.folderId;
-    tabContent = `
-      <div class="panel-section">
-        <div class="section-title-row">
-          <span class="section-title">קבצי עיצוב</span>
-          ${hasProjFolder
-            ? (design.folderId
-                ? `<label class="btn-upload-file" for="design-file-input">📎 הוסף קובץ</label>
-                   <input type="file" id="design-file-input" class="file-input-hidden" multiple />
-                   <a class="btn-drive-folder" href="https://drive.google.com/drive/folders/${escHtml(design.folderId)}" target="_blank" rel="noopener" title="פתח תיקייה ב-Drive">📁</a>`
-                : '<span class="text-muted text-sm">יוצר תיקייה…</span>')
-            : '<span class="text-muted text-sm">תיקיית Drive תיוצר עם שמירת הפרויקט</span>'}
-        </div>
-        <div class="design-files-list" id="design-files-list">
-          ${design.folderId ? '<p class="text-muted text-sm">טוען קבצים…</p>' : ''}
-        </div>
-      </div>`;
+    <div class="panel-section">
+      <div class="section-title">הערות</div>
+      <div class="log-list">${renderLogEntries(design.notes || [], 'notes-entry')}</div>
+      <div class="log-add-form">
+        <textarea class="log-textarea" id="new-design-note" placeholder="הוסף הערה..."></textarea>
+        <button class="btn-gold" onclick="addDesignLog('notes')">הוסף הערה</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">מידע חשוב</div>
+      <div class="log-list">${renderLogEntries(design.importantInfo || [], 'info-entry')}</div>
+      <div class="log-add-form">
+        <textarea class="log-textarea" id="new-design-info" placeholder="הוסף מידע חשוב..."></textarea>
+        <button class="btn-gold" onclick="addDesignLog('info')">הוסף מידע</button>
+      </div>
+    </div>
+  `;
+
+  // Status select — direct change handler (no click-to-edit)
+  const statusSel = body.querySelector('.design-status-sel');
+  if (statusSel) {
+    statusSel.addEventListener('change', async () => {
+      const newVal = statusSel.value;
+      if (newVal !== design.status) await updateDesignField(project, idx, 'status', newVal);
+    });
   }
 
-  const body = panel.querySelector('.panel-body');
-  body.innerHTML = tabsHtml + `<div class="panel-tab-content">${tabContent}</div>`;
-
-  // Tab click handlers
-  body.querySelectorAll('.panel-tab-btn[data-dtab]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      S.panelDesignTab = btn.dataset.dtab;
-      renderDesignPanel(project, project.designs[idx], idx);
-    });
+  // Other editable fields (name, deadline, priority)
+  body.querySelectorAll('.field-value.editable').forEach(el => {
+    el.addEventListener('click', () => startDesignInlineEdit(el, project, design, idx));
   });
 
-  // Details tab wiring
-  if (S.panelDesignTab === 'details') {
-    const statusSel = body.querySelector('.design-status-sel');
-    if (statusSel) {
-      statusSel.addEventListener('change', async () => {
-        const newVal = statusSel.value;
-        if (newVal !== design.status) await updateDesignField(project, idx, 'status', newVal);
+  if (isBoss) {
+    body.querySelectorAll('.priority-star-btn').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        await updateDesignField(project, idx, 'priority', parseInt(btn.dataset.value));
+        renderDesignPanel(project, project.designs[idx], idx);
       });
-    }
-    body.querySelectorAll('.field-value.editable').forEach(el => {
-      el.addEventListener('click', () => startDesignInlineEdit(el, project, design, idx));
     });
-    if (isBoss) {
-      body.querySelectorAll('.priority-star-btn').forEach(btn => {
-        btn.addEventListener('click', async e => {
-          e.stopPropagation();
-          await updateDesignField(project, idx, 'priority', parseInt(btn.dataset.value));
-          renderDesignPanel(project, project.designs[idx], idx);
-        });
-      });
-    }
-  }
-
-  // Files tab wiring
-  if (S.panelDesignTab === 'files' && project.folderId) {
-    if (design.folderId) {
-      loadDesignFiles(project, design, idx);
-      const fileInput = body.querySelector('#design-file-input');
-      if (fileInput) {
-        fileInput.addEventListener('change', async e => {
-          const files = [...e.target.files];
-          for (const f of files) await uploadDesignFile(project, design, idx, f);
-          e.target.value = '';
-        });
-      }
-    } else {
-      getOrCreateDesignFolderAndRender(project, design, idx);
-    }
   }
 }
 
@@ -1327,6 +1188,12 @@ async function submitAddProject() {
   if (ok) {
     await logChange('created', project.id, project.name, `פרויקט חדש נוצר ע"י ${S.user.displayName}`);
     closeModalEl(document.getElementById('add-modal'));
+    // Link to idea if converting
+    if (window._convertingIdeaId) {
+      const linkIdea = S.ideas.find(i => i.id === window._convertingIdeaId);
+      if (linkIdea) { linkIdea.convertedProjectId = project.id; await saveIdeaData(linkIdea); }
+      window._convertingIdeaId = null;
+    }
     renderProjectList();
     toast('פרויקט נוסף בהצלחה', 'success');
   }
@@ -1645,47 +1512,6 @@ function wireEvents() {
   document.getElementById('btn-delete-project').addEventListener('click', () =>
     openDeleteConfirm(S.panelProjectId));
 
-  document.getElementById('btn-delete-client').addEventListener('click', () => {
-    if (!S.clientPanelId) return;
-    const client = S.clients.find(c => c.id === S.clientPanelId);
-    openConfirmModal({
-      title:    'מחיקת לקוח',
-      message:  `למחוק את "${client?.name || 'הלקוח'}"?`,
-      btnLabel: 'מחק',
-      btnClass: 'btn-danger',
-      action:   () => deleteClientData(S.clientPanelId),
-    });
-  });
-
-  document.getElementById('btn-delete-idea').addEventListener('click', () => {
-    if (!S.ideaPanelId) return;
-    const idea = S.ideas.find(i => i.id === S.ideaPanelId);
-    openConfirmModal({
-      title:    'מחיקת רעיון',
-      message:  `למחוק את "${idea?.name || 'הרעיון'}"?`,
-      btnLabel: 'מחק',
-      btnClass: 'btn-danger',
-      action:   async () => {
-        await deleteIdeaData(S.ideaPanelId);
-        closePanel('idea-panel');
-        renderIdeasWing();
-      },
-    });
-  });
-
-  document.getElementById('btn-convert-idea').addEventListener('click', () => {
-    if (!S.ideaPanelId) return;
-    const idea = S.ideas.find(i => i.id === S.ideaPanelId);
-    if (idea && idea.convertedProjectId) return;
-    openConfirmModal({
-      title:    'הפיכה לפרויקט פעיל',
-      message:  `להפוך את "${idea?.name || 'הרעיון'}" לפרויקט פעיל?`,
-      btnLabel: 'הפוך לפרויקט',
-      btnClass: 'btn-gold',
-      action:   () => convertIdeaToProject(S.ideaPanelId),
-    });
-  });
-
   // Panel close buttons
   document.querySelectorAll('.btn-panel-close').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1693,11 +1519,12 @@ function wireEvents() {
       if (btn.closest('#project-panel')) { closeAllPanels(); return; }
       // Design panel X → close only design panel (project panel stays)
       if (btn.closest('#design-panel')) {
-        closePanel('design-panel');        // If project panel is open, keep it; otherwise check overlay
+        closePanel('design-panel');
+        // If project panel is open, keep it; otherwise check overlay
         checkOverlay();
         return;
       }
-      // Other side panels (changes, client, idea panels)
+      // Other side panels (changes panel, etc.)
       const panel = btn.closest('.side-panel, .center-panel');
       if (panel) closePanel(panel.id);
     });
@@ -1732,370 +1559,561 @@ function wireEvents() {
   document.getElementById('password').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('login-form').requestSubmit();
   });
+
+  // Idea panel buttons
+  document.getElementById('btn-convert-idea').addEventListener('click', convertIdeaToProject);
+  document.getElementById('btn-delete-idea').addEventListener('click', deleteIdeaConfirm);
+
+  // Client panel button
+  document.getElementById('btn-delete-client').addEventListener('click', deleteClientConfirm);
+
+  // Add idea modal
+  document.getElementById('btn-submit-add-idea').addEventListener('click', submitAddIdea);
+
+  // Add client modal
+  document.getElementById('btn-submit-add-client').addEventListener('click', submitAddClient);
 }
+
 
 // ================================================================
 // WING NAVIGATION
 // ================================================================
-
 function openWing(name) {
-  if (S.currentWing === name) { closeWing(); return; }
+  const wingContent    = document.getElementById('wing-content');
+  const projectList    = document.getElementById('project-list');
+  const filtersBar     = document.getElementById('filters-bar');
+  const sectionBar     = document.getElementById('section-header-bar');
+  const fab            = document.getElementById('add-btn');
+
+  if (!name) {
+    S.currentWing = null;
+    wingContent.classList.add('hidden');
+    projectList.classList.remove('hidden');
+    filtersBar.classList.remove('hidden');
+    sectionBar.classList.remove('hidden');
+    fab.classList.remove('hidden');
+    return;
+  }
+
   S.currentWing = name;
+  wingContent.classList.remove('hidden');
+  projectList.classList.add('hidden');
+  filtersBar.classList.add('hidden');
+  sectionBar.classList.add('hidden');
+  fab.classList.add('hidden');
 
-  document.querySelectorAll('.wing-tile').forEach(t => {
-    const oc = t.getAttribute('onclick') || '';
-    t.classList.toggle('active', oc.includes(`'${name}'`));
-  });
-
-  document.getElementById('wing-content').classList.remove('hidden');
-  document.getElementById('project-list').classList.add('hidden');
-  closeAllPanels();
-
-  if (name === 'clients')  renderClientsWing();
-  else if (name === 'ideas')    renderIdeasWing();
+  if      (name === 'clients')  loadAndRenderClientsWing();
+  else if (name === 'ideas')    loadAndRenderIdeasWing();
   else if (name === 'products') renderProductsWing();
-}
-
-function closeWing() {
-  S.currentWing = null;
-  document.querySelectorAll('.wing-tile').forEach(t => t.classList.remove('active'));
-  document.getElementById('wing-content').classList.add('hidden');
-  document.getElementById('project-list').classList.remove('hidden');
 }
 
 // ================================================================
 // CLIENTS WING
 // ================================================================
-
-function renderClientsWing() {
-  const el = document.getElementById('wing-content');
-  const list = S.clients.filter(c =>
-    !S.clientSearch || c.name?.toLowerCase().includes(S.clientSearch.toLowerCase())
-  );
-  el.innerHTML = `
+async function loadAndRenderClientsWing() {
+  const wc = document.getElementById('wing-content');
+  wc.innerHTML = `
     <div class="wing-header">
+      <button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>
       <h2 class="wing-title">👤 לקוחות</h2>
-      <div class="wing-actions">
-        <input type="search" class="filter-search" placeholder="🔍 חיפוש לקוח..."
-          value="${escHtml(S.clientSearch)}"
-          oninput="S.clientSearch=this.value;renderClientsWing()" />
-        <button class="btn-primary" onclick="addClientData()">+ לקוח חדש</button>
-      </div>
+      <button class="btn-gold btn-sm" onclick="openAddClientModal()">+ לקוח</button>
     </div>
-    <div class="wing-list">
-      ${list.length === 0
-        ? '<div class="empty-state"><div class="empty-icon">👤</div><div>אין לקוחות</div></div>'
-        : list.map(c => `
-            <div class="wing-item" onclick="openClientPanel('${c.id}')">
-              <div class="wing-item-title">${escHtml(c.name || '—')}</div>
-              <div class="wing-item-meta">
-                ${c.phone ? `📞 ${escHtml(c.phone)}` : ''}
-                ${c.email ? ` · ✉️ ${escHtml(c.email)}` : ''}
-              </div>
-            </div>`).join('')}
+    <div class="clients-list" id="clients-list">
+      <p class="text-muted text-sm">טוען…</p>
     </div>`;
+
+  showSpinner(true);
+  try {
+    const result = await apiCall('getClients');
+    S.clients = result.clients || [];
+    renderClientsList();
+  } catch(e) {
+    toast('שגיאה בטעינת לקוחות: ' + e.message, 'error');
+  } finally {
+    showSpinner(false);
+  }
+}
+
+function renderClientsList() {
+  const list = document.getElementById('clients-list');
+  if (!list) return;
+  if (!S.clients.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">👤</div><p>אין לקוחות עדיין</p></div>';
+    return;
+  }
+  list.innerHTML = S.clients.map(c => `
+    <div class="wing-item client-row" onclick="openClientPanel('${escHtml(c.id)}')">
+      <div class="wing-item-title">${escHtml(c.name)}</div>
+      <div class="wing-item-meta">
+        ${c.phone ? `<span>📞 ${escHtml(c.phone)}</span>` : ''}
+        ${c.email ? `<span>✉️ ${escHtml(c.email)}</span>` : ''}
+      </div>
+    </div>`).join('');
 }
 
 function openClientPanel(id) {
-  S.clientPanelId = id;
-  renderClientPanel(S.clients.find(c => c.id === id) || { id });
+  const client = S.clients.find(c => c.id === id);
+  if (!client) return;
+  S.panelClientId = id;
+  renderClientPanel(client);
   openPanel('client-panel');
 }
 
 function renderClientPanel(client) {
-  document.querySelector('#client-panel .panel-body').innerHTML = `
+  const panel = document.getElementById('client-panel');
+  panel.querySelector('.panel-title').textContent = client.name;
+  const body = panel.querySelector('.panel-body');
+  body.innerHTML = `
     <div class="panel-section">
-      <div class="form-group">
-        <label class="form-label">שם *</label>
-        <input type="text" id="cpi-name" class="form-input" value="${escHtml(client.name||'')}" placeholder="שם הלקוח" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">טלפון</label>
-        <input type="text" id="cpi-phone" class="form-input" value="${escHtml(client.phone||'')}" placeholder="050-0000000" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">אימייל</label>
-        <input type="email" id="cpi-email" class="form-input" value="${escHtml(client.email||'')}" placeholder="example@email.com" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">כתובת</label>
-        <input type="text" id="cpi-address" class="form-input" value="${escHtml(client.address||'')}" placeholder="כתובת" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">הערות</label>
-        <textarea id="cpi-notes" class="form-input" rows="3" placeholder="הערות...">${escHtml(client.notes||'')}</textarea>
-      </div>
-      <button class="btn-primary" style="width:100%;margin-top:1rem;" onclick="saveClientData('${client.id}')">💾 שמור</button>
-    </div>
-    <div class="panel-section">
-      <div class="panel-section-header">
-        <h4 class="panel-section-title">📎 קבצים</h4>
-        <div style="display:flex;gap:0.5rem;align-items:center;">
-          ${!idea.folderId ? `<button class="btn-secondary btn-sm" onclick="getOrCreateIdeaFolder('${idea.id}')">📁 צור תיקייה</button>` : `<label class="btn-upload-file" for="idea-file-input">📎 הוסף קובץ</label><input type="file" id="idea-file-input" class="file-input-hidden" multiple />`}
+      <div class="field-grid">
+        <div class="field-item full">
+          <span class="field-label">שם</span>
+          <div class="field-value editable" data-cfield="name" data-type="text">${escHtml(client.name)}</div>
+        </div>
+        <div class="field-item">
+          <span class="field-label">טלפון</span>
+          <div class="field-value editable" data-cfield="phone" data-type="text">
+            ${client.phone ? escHtml(client.phone) : '<span class="placeholder">—</span>'}
+          </div>
+        </div>
+        <div class="field-item">
+          <span class="field-label">אימייל</span>
+          <div class="field-value editable" data-cfield="email" data-type="text">
+            ${client.email ? escHtml(client.email) : '<span class="placeholder">—</span>'}
+          </div>
+        </div>
+        <div class="field-item full">
+          <span class="field-label">כתובת</span>
+          <div class="field-value editable" data-cfield="address" data-type="text">
+            ${client.address ? escHtml(client.address) : '<span class="placeholder">—</span>'}
+          </div>
+        </div>
+        <div class="field-item full">
+          <span class="field-label">הערות</span>
+          <div class="field-value editable" data-cfield="notes" data-type="text">
+            ${client.notes ? escHtml(client.notes) : '<span class="placeholder">—</span>'}
+          </div>
         </div>
       </div>
-      <div class="idea-files-list" id="idea-files-list">
-        ${idea.folderId ? '<p class="text-muted text-sm">טוען קבצים...</p>' : '<p class="text-muted text-sm">צור תיקייה ב-Drive לצירוף קבצים</p>'}
-      </div>
     </div>`;
+
+  body.querySelectorAll('.field-value.editable').forEach(el => {
+    el.addEventListener('click', () => startClientInlineEdit(el, client));
+  });
 }
 
-async function addClientData() {
-  const c = { id: uid(), name: 'לקוח חדש', phone:'', email:'', address:'', notes:'', createdAt: new Date().toISOString() };
-  showSpinner(true);
-  try {
-    const res = await apiCall('saveClient', { client: c });
-    if (res.ok) { S.clients.unshift(c); renderClientsWing(); openClientPanel(c.id); toast('לקוח חדש נוצר'); }
-    else toast('שגיאה ביצירת לקוח', 'error');
-  } catch(e) { toast(e.message, 'error'); } finally { showSpinner(false); }
+function startClientInlineEdit(el, client) {
+  const field   = el.dataset.cfield;
+  const current = client[field] || '';
+  const input   = document.createElement('input');
+  input.type      = 'text';
+  input.className = 'field-edit-input';
+  input.value     = current;
+  el.innerHTML    = '';
+  el.appendChild(input);
+  input.focus();
+
+  const save = async () => {
+    const newVal = input.value.trim();
+    if (newVal !== current) {
+      client[field] = newVal;
+      const ok = await saveClientData(client);
+      if (ok) { renderClientPanel(client); renderClientsList(); toast('נשמר ✓', 'success'); }
+      else     { client[field] = current;   renderClientPanel(client); }
+    } else {
+      renderClientPanel(client);
+    }
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
 }
 
-async function saveClientData(id) {
-  const name    = document.getElementById('cpi-name')?.value.trim();
-  const phone   = document.getElementById('cpi-phone')?.value.trim();
-  const email   = document.getElementById('cpi-email')?.value.trim();
-  const address = document.getElementById('cpi-address')?.value.trim();
-  const notes   = document.getElementById('cpi-notes')?.value.trim();
-  if (!name) { toast('שם לקוח חובה', 'error'); return; }
-  const idx = S.clients.findIndex(c => c.id === id);
-  const client = idx >= 0 ? { ...S.clients[idx] } : { id };
-  Object.assign(client, { name, phone, email, address, notes });
+async function saveClientData(client) {
   showSpinner(true);
   try {
-    const res = await apiCall('saveClient', { client });
-    if (res.ok) { if (idx>=0) S.clients[idx]=client; else S.clients.unshift(client); renderClientsWing(); toast('לקוח נשמר ✓'); }
-    else toast('שגיאה בשמירה', 'error');
-  } catch(e) { toast(e.message,'error'); } finally { showSpinner(false); }
+    await apiCall('saveClient', { client });
+    const idx = S.clients.findIndex(c => c.id === client.id);
+    if (idx >= 0) S.clients[idx] = client; else S.clients.push(client);
+    return true;
+  } catch(e) {
+    toast('שגיאה בשמירה: ' + e.message, 'error');
+    return false;
+  } finally { showSpinner(false); }
 }
 
-async function deleteClientData(id) {
-  showSpinner(true);
-  try {
-    const res = await apiCall('deleteClient', { id });
-    if (res.ok) { S.clients = S.clients.filter(c => c.id !== id); closePanel('client-panel'); renderClientsWing(); toast('לקוח נמחק'); }
-    else toast('שגיאה במחיקה', 'error');
-  } catch(e) { toast(e.message,'error'); } finally { showSpinner(false); }
+async function deleteClientConfirm() {
+  const id     = S.panelClientId;
+  const client = S.clients.find(c => c.id === id);
+  if (!client) return;
+  openConfirmModal({
+    title: 'מחיקת לקוח',
+    message: `למחוק את "${client.name}"? פעולה זו בלתי הפיכה.`,
+    btnLabel: 'מחק', btnClass: 'btn-danger',
+    action: async () => {
+      showSpinner(true);
+      try {
+        await apiCall('deleteClient', { id });
+        S.clients = S.clients.filter(c => c.id !== id);
+        closePanel('client-panel');
+        renderClientsList();
+        toast('לקוח נמחק', 'success');
+      } catch(e) { toast('שגיאה במחיקה: ' + e.message, 'error'); }
+      finally    { showSpinner(false); }
+    }
+  });
+}
+
+function openAddClientModal() {
+  document.getElementById('add-client-name').value  = '';
+  document.getElementById('add-client-phone').value = '';
+  document.getElementById('add-client-email').value = '';
+  openModalEl(document.getElementById('add-client-modal'));
+}
+
+async function submitAddClient() {
+  const name = document.getElementById('add-client-name').value.trim();
+  if (!name) { toast('שם הלקוח הוא שדה חובה', 'error'); return; }
+  const client = {
+    id: uid(), name,
+    phone:   document.getElementById('add-client-phone').value.trim(),
+    email:   document.getElementById('add-client-email').value.trim(),
+    address: '', notes: '',
+    createdAt: new Date().toISOString()
+  };
+  const ok = await saveClientData(client);
+  if (ok) {
+    closeModalEl(document.getElementById('add-client-modal'));
+    renderClientsList();
+    toast('לקוח נוסף ✓', 'success');
+  }
 }
 
 // ================================================================
 // IDEAS WING
 // ================================================================
-
-function renderIdeasWing() {
-  const el = document.getElementById('wing-content');
-  if (!el || S.currentWing !== 'ideas') return;
-  const stages = [...new Set(S.ideas.map(i => i.stage).filter(Boolean))];
-  const list = S.ideas.filter(i => {
-    if (S.ideaSearch && !i.name?.toLowerCase().includes(S.ideaSearch.toLowerCase())) return false;
-    if (S.ideaStageFilt && i.stage !== S.ideaStageFilt) return false;
-    return true;
-  });
-  el.innerHTML = `
+async function loadAndRenderIdeasWing() {
+  const wc = document.getElementById('wing-content');
+  wc.innerHTML = `
     <div class="wing-header">
+      <button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>
       <h2 class="wing-title">💡 רעיונות</h2>
-      <div class="wing-actions">
-        <input type="search" class="filter-search" placeholder="🔍 חיפוש רעיון..."
-          value="${escHtml(S.ideaSearch)}"
-          oninput="S.ideaSearch=this.value;renderIdeasWing()" />
-        <select class="filter-select" onchange="S.ideaStageFilt=this.value;renderIdeasWing()">
-          <option value="">כל השלבים</option>
-          ${stages.map(s=>`<option value="${escHtml(s)}" ${S.ideaStageFilt===s?'selected':''}>${escHtml(s)}</option>`).join('')}
-        </select>
-        <button class="btn-primary" onclick="addIdeaData()">+ רעיון חדש</button>
-      </div>
+      <button class="btn-gold btn-sm" onclick="openAddIdeaModal()">+ רעיון</button>
     </div>
-    <div class="wing-list">
-      ${list.length === 0
-        ? '<div class="empty-state"><div class="empty-icon">💡</div><div>אין רעיונות</div></div>'
-        : list.map(i => `
-            <div class="wing-item${i.convertedProjectId?' converted':''}" onclick="openIdeaPanel('${i.id}')">
-              <div class="wing-item-title">${escHtml(i.name||'—')}${i.convertedProjectId?' ✅':''}</div>
-              <div class="wing-item-meta">
-                ${i.stage?`<span class="status-badge">${escHtml(i.stage)}</span>`:''}
-                ${i.category?` · ${escHtml(i.category)}`:''}
-              </div>
-            </div>`).join('')}
+    <div class="ideas-list" id="ideas-list">
+      <p class="text-muted text-sm">טוען…</p>
     </div>`;
+
+  showSpinner(true);
+  try {
+    const result = await apiCall('getIdeas');
+    S.ideas = result.ideas || [];
+    renderIdeasList();
+  } catch(e) {
+    toast('שגיאה בטעינת רעיונות: ' + e.message, 'error');
+  } finally {
+    showSpinner(false);
+  }
+}
+
+function renderIdeasList() {
+  const list = document.getElementById('ideas-list');
+  if (!list) return;
+  if (!S.ideas.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">💡</div><p>אין רעיונות עדיין</p></div>';
+    return;
+  }
+  list.innerHTML = S.ideas.map(idea => `
+    <div class="wing-item" onclick="openIdeaPanel('${escHtml(idea.id)}')">
+      <div class="wing-item-title">
+        ${escHtml(idea.name)}
+        ${idea.convertedProjectId ? ' <span style="font-size:0.75rem;color:var(--green)">✅ הפך לפרויקט</span>' : ''}
+      </div>
+      <div class="wing-item-meta">
+        ${idea.stage    ? `<span>${escHtml(idea.stage)}</span>`    : ''}
+        ${idea.category ? `<span>${escHtml(idea.category)}</span>` : ''}
+      </div>
+    </div>`).join('');
 }
 
 function openIdeaPanel(id) {
-  S.ideaPanelId = id;
-  const idea = S.ideas.find(i => i.id === id) || { id };
+  const idea = S.ideas.find(i => i.id === id);
+  if (!idea) return;
+  S.panelIdeaId = id;
   renderIdeaPanel(idea);
   openPanel('idea-panel');
-  const btn = document.getElementById('btn-convert-idea');
-  if (btn) btn.disabled = !!(idea.convertedProjectId);
   if (idea.folderId) loadIdeaFiles(idea);
-  const fi = document.getElementById('idea-file-input');
-  if (fi) fi.addEventListener('change', async e => {
-    const cur = S.ideas.find(i => i.id === S.ideaPanelId) || idea;
-    for (const f of [...e.target.files]) await uploadIdeaFile(cur, f);
-    e.target.value = '';
-  });
 }
 
 function renderIdeaPanel(idea) {
-  const STAGES = ['ראשוני','בחינה','פיתוח','מוכן'];
-  document.querySelector('#idea-panel .panel-body').innerHTML = `
+  const panel = document.getElementById('idea-panel');
+  panel.querySelector('.panel-title').textContent = idea.name;
+  const body = panel.querySelector('.panel-body');
+
+  body.innerHTML = `
     <div class="panel-section">
-      <div class="form-group">
-        <label class="form-label">שם הרעיון *</label>
-        <input type="text" id="ipi-name" class="form-input" value="${escHtml(idea.name||'')}" placeholder="שם הרעיון" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">תיאור</label>
-        <textarea id="ipi-description" class="form-input" rows="3" placeholder="תיאור...">${escHtml(idea.description||'')}</textarea>
-      </div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label">שלב</label>
-          <select id="ipi-stage" class="form-select">
-            <option value="">—</option>
-            ${STAGES.map(s=>`<option value="${s}" ${idea.stage===s?'selected':''}>${s}</option>`).join('')}
-          </select>
+      <div class="field-grid">
+        <div class="field-item full">
+          <span class="field-label">שם הרעיון</span>
+          <div class="field-value editable" data-ifield="name" data-type="text">${escHtml(idea.name)}</div>
         </div>
-        <div class="form-group">
-          <label class="form-label">קטגוריה</label>
-          <input type="text" id="ipi-category" class="form-input" value="${escHtml(idea.category||'')}" placeholder="קטגוריה" />
+        <div class="field-item full">
+          <span class="field-label">תיאור</span>
+          <div class="field-value editable" data-ifield="description" data-type="text">
+            ${idea.description ? escHtml(idea.description) : '<span class="placeholder">—</span>'}
+          </div>
+        </div>
+        <div class="field-item">
+          <span class="field-label">שלב</span>
+          <div class="field-value editable" data-ifield="stage" data-type="text">
+            ${idea.stage ? escHtml(idea.stage) : '<span class="placeholder">—</span>'}
+          </div>
+        </div>
+        <div class="field-item">
+          <span class="field-label">קטגוריה</span>
+          <div class="field-value editable" data-ifield="category" data-type="text">
+            ${idea.category ? escHtml(idea.category) : '<span class="placeholder">—</span>'}
+          </div>
+        </div>
+        <div class="field-item full">
+          <span class="field-label">לקוחות</span>
+          <div class="field-value editable" data-ifield="clients" data-type="text">
+            ${idea.clients ? escHtml(idea.clients) : '<span class="placeholder">—</span>'}
+          </div>
+        </div>
+        <div class="field-item full">
+          <span class="field-label">הערות</span>
+          <div class="field-value editable" data-ifield="notes" data-type="text">
+            ${idea.notes ? escHtml(idea.notes) : '<span class="placeholder">—</span>'}
+          </div>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">לקוחות רלוונטיים</label>
-        <input type="text" id="ipi-clients" class="form-input" value="${escHtml(idea.clients||'')}" placeholder="שמות לקוחות..." />
+    </div>
+    <div class="panel-section">
+      <div class="section-title-row">
+        <span class="section-title">📎 קבצים</span>
+        ${idea.folderId ? `
+          <label class="btn-upload-file" for="idea-file-input">📎 הוסף קובץ</label>
+          <input type="file" id="idea-file-input" class="file-input-hidden" multiple />
+          <a class="btn-drive-folder"
+             href="https://drive.google.com/drive/folders/${escHtml(idea.folderId)}"
+             target="_blank" rel="noopener" title="פתח ב-Drive">📁</a>
+        ` : `
+          <button class="btn-secondary btn-sm" onclick="createIdeaFolder()">📁 צור תיקייה</button>
+        `}
       </div>
-      <div class="form-group">
-        <label class="form-label">הערות</label>
-        <textarea id="ipi-notes" class="form-input" rows="2" placeholder="הערות...">${escHtml(idea.notes||'')}</textarea>
+      <div class="project-files-list" id="idea-files-list">
+        ${idea.folderId
+          ? '<p class="text-muted text-sm">אין קבצים עדיין</p>'
+          : '<p class="text-muted text-sm">צור תיקייה כדי לצרף קבצים</p>'}
       </div>
-      ${idea.convertedProjectId?'<div class="info-badge">✅ הרעיון הפך לפרויקט פעיל</div>':''}
-      <button class="btn-primary" style="width:100%;margin-top:1rem;" onclick="saveIdeaData('${idea.id}')">💾 שמור</button>
     </div>`;
-}
 
-async function addIdeaData() {
-  const i = { id:uid(), name:'רעיון חדש', description:'', stage:'ראשוני', category:'', clients:'', notes:'', createdAt:new Date().toISOString() };
-  showSpinner(true);
-  try {
-    const res = await apiCall('saveIdea', { idea: i });
-    if (res.ok) { const saved = res.idea || i; S.ideas.unshift(saved); renderIdeasWing(); openIdeaPanel(saved.id); toast('רעיון חדש נוצר'); }
-    else toast('שגיאה ביצירת רעיון', 'error');
-  } catch(e) { toast(e.message,'error'); } finally { showSpinner(false); }
-}
+  // Inline edit listeners
+  body.querySelectorAll('.field-value.editable').forEach(el => {
+    el.addEventListener('click', () => startIdeaInlineEdit(el, idea));
+  });
 
-async function saveIdeaData(id) {
-  const name        = document.getElementById('ipi-name')?.value.trim();
-  const description = document.getElementById('ipi-description')?.value.trim();
-  const stage       = document.getElementById('ipi-stage')?.value;
-  const category    = document.getElementById('ipi-category')?.value.trim();
-  const clients     = document.getElementById('ipi-clients')?.value.trim();
-  const notes       = document.getElementById('ipi-notes')?.value.trim();
-  if (!name) { toast('שם הרעיון חובה','error'); return; }
-  const idx = S.ideas.findIndex(i => i.id === id);
-  const idea = idx>=0 ? { ...S.ideas[idx] } : { id };
-  Object.assign(idea, { name, description, stage, category, clients, notes });
-  showSpinner(true);
-  try {
-    const res = await apiCall('saveIdea', { idea });
-    if (res.ok) { const saved = res.idea || idea; if (idx>=0) S.ideas[idx]=saved; else S.ideas.unshift(saved); renderIdeasWing(); toast('רעיון נשמר ✓'); }
-    else toast('שגיאה בשמירה','error');
-  } catch(e) { toast(e.message,'error'); } finally { showSpinner(false); }
-}
-
-async function deleteIdeaData(id) {
-  showSpinner(true);
-  try {
-    const res = await apiCall('deleteIdea', { id });
-    if (res.ok) { S.ideas = S.ideas.filter(i => i.id !== id); closePanel('idea-panel'); renderIdeasWing(); toast('רעיון נמחק'); }
-    else toast('שגיאה במחיקה','error');
-  } catch(e) { toast(e.message,'error'); } finally { showSpinner(false); }
-}
-async function getOrCreateIdeaFolder(id) {
-  const idx = S.ideas.findIndex(i => i.id === id);
-  if (idx < 0) return;
-  showSpinner(true);
-  try {
-    const res = await apiCall('getOrCreateIdeaFolder', { ideaId: id, ideaName: S.ideas[idx].name || id });
-    if (res.folderId) {
-      S.ideas[idx].folderId = res.folderId;
-      await apiCall('saveIdea', { idea: S.ideas[idx] });
-      renderIdeaPanel(S.ideas[idx]);
-      loadIdeaFiles(S.ideas[idx]);
-      const fi = document.getElementById('idea-file-input');
-      if (fi) fi.addEventListener('change', async e => {
-        const cur = S.ideas.find(i => i.id === S.ideaPanelId) || S.ideas[idx];
-        for (const f of [...e.target.files]) await uploadIdeaFile(cur, f);
+  // File upload listener
+  if (idea.folderId) {
+    const fi = body.querySelector('#idea-file-input');
+    if (fi) {
+      fi.addEventListener('change', async e => {
+        for (const f of [...e.target.files]) await uploadIdeaFile(idea, f);
         e.target.value = '';
       });
     }
-  } catch(e) { toast(e.message, 'error'); } finally { showSpinner(false); }
+  }
+
+  // Convert button
+  const convertBtn = panel.querySelector('#btn-convert-idea');
+  if (convertBtn) convertBtn.classList.toggle('hidden', !!idea.convertedProjectId);
 }
+
+function startIdeaInlineEdit(el, idea) {
+  const field   = el.dataset.ifield;
+  const current = idea[field] || '';
+  const input   = document.createElement('input');
+  input.type      = 'text';
+  input.className = 'field-edit-input';
+  input.value     = current;
+  el.innerHTML    = '';
+  el.appendChild(input);
+  input.focus();
+
+  const save = async () => {
+    const newVal = input.value.trim();
+    if (newVal !== current) {
+      idea[field] = newVal;
+      const ok = await saveIdeaData(idea);
+      if (ok) { renderIdeaPanel(idea); renderIdeasList(); toast('נשמר ✓', 'success'); }
+      else     { idea[field] = current; renderIdeaPanel(idea); }
+    } else {
+      renderIdeaPanel(idea);
+    }
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+}
+
+async function saveIdeaData(idea) {
+  showSpinner(true);
+  try {
+    await apiCall('saveIdea', { idea });
+    const idx = S.ideas.findIndex(i => i.id === idea.id);
+    if (idx >= 0) S.ideas[idx] = idea; else S.ideas.push(idea);
+    return true;
+  } catch(e) {
+    toast('שגיאה בשמירה: ' + e.message, 'error');
+    return false;
+  } finally { showSpinner(false); }
+}
+
+async function deleteIdeaConfirm() {
+  const idea = S.ideas.find(i => i.id === S.panelIdeaId);
+  if (!idea) return;
+  openConfirmModal({
+    title: 'מחיקת רעיון',
+    message: `למחוק את "${idea.name}"? פעולה זו בלתי הפיכה.`,
+    btnLabel: 'מחק', btnClass: 'btn-danger',
+    action: async () => {
+      showSpinner(true);
+      try {
+        await apiCall('deleteIdea', { id: idea.id });
+        S.ideas = S.ideas.filter(i => i.id !== idea.id);
+        closePanel('idea-pan`       renderIdeasList();
+        toast('רעיון נמחק', 'success');
+      } catch(e) { toast('שגיאה במחיקה: ' + e.message, 'error'); }
+      finally    { showSpinner(false); }
+    }
+  });
+}
+
+async function createIdeaFolder() {
+  const idea = S.ideas.find(i => i.id === S.panelIdeaId);
+  if (!idea) return;
+  showSpinner(true);
+  try {
+    const result = await apiCall('getOrCreateIdeaFolder', { ideaId: idea.id, ideaName: idea.name });
+    idea.folderId = result.folderId;
+    await saveIdeaData(idea);
+    renderIdeaPanel(idea);
+    loadIdeaFiles(idea);
+    toast('תיקייה נוצרה ✓', 'success');
+  } catch(e) {
+    toast('שגיאה ביצירת תיקייה: ' + e.message, 'error');
+  } finally { showSpinner(false); }
+}
+
 async function loadIdeaFiles(idea) {
   const listEl = document.getElementById('idea-files-list');
   if (!listEl || !idea.folderId) return;
   try {
     const result = await apiCall('getProjectFiles', { folderId: idea.folderId });
-    const files = result.files || [];
-    listEl.innerHTML = files.length === 0
-      ? '<p class="text-muted text-sm">אין קבצים עדיין</p>'
-      : files.map(f => `<div class="project-file-item" data-file-id="${escHtml(f.id)}"><span class="file-icon">${fileIcon(f.mimeType)}</span><a class="file-name" href="${escHtml(f.url)}" target="_blank" rel="noopener">${escHtml(f.name)}</a><span class="file-size">${formatFileSize(f.size)}</span><button class="btn-file-delete" onclick="deleteIdeaFile('${escHtml(f.id)}', this)" title="מחק">✕</button></div>`).join('');
-  } catch(e) { listEl.innerHTML = '<p class="text-muted text-sm">שגיאה בטעינת קבצים</p>'; }
-}
-async function uploadIdeaFile(idea, file) {
-  if (!idea.folderId) { toast('אין תיקיית Drive לרעיון', 'error'); return; }
-  if (file.size > 20*1024*1024) { toast(file.name + ' — גדול מ-20MB', 'error'); return; }
-  toast('מעלה: ' + file.name + '...', 'info');
-  try {
-    const base64 = await fileToBase64(file);
-    const result = await apiCall('uploadFile', { folderId: idea.folderId, filename: file.name, base64, mimeType: file.type || 'application/octet-stream' });
-    if (result.error) throw new Error(result.error);
-    toast(file.name + ' הועלה', 'success');
-    loadIdeaFiles(idea);
-  } catch(e) { toast('שגיאה בהעלאה: ' + e.message, 'error'); }
-}
-async function deleteIdeaFile(fileId, btn) {
-  if (!confirm('למחוק את הקובץ מ-Drive?')) return;
-  try { await apiCall('deleteFile', { fileId }); btn.closest('.project-file-item').remove(); toast('קובץ נמחק', 'success'); }
-  catch(e) { toast('שגיאה: ' + e.message, 'error'); }
+    const files  = result.files || [];
+    if (!files.length) {
+      listEl.innerHTML = '<p class="text-muted text-sm">אין קבצים עדיין</p>';
+    } else {
+      listEl.innerHTML = files.map(f => `
+        <div class="project-file-item" data-file-id="${escHtml(f.id)}">
+          <span class="file-icon">${fileIcon(f.mimeType)}</span>
+          <a class="file-name" href="${escHtml(f.url)}" target="_blank" rel="noopener">${escHtml(f.name)}</a>
+          <span class="file-size">${formatFileSize(f.size)}</span>
+          <button class="btn-file-delete" onclick="deleteIdeaFile('${escHtml(f.id)}',this)" title="מחק">✕</button>
+        </div>`).join('');
+    }
+  } catch(e) {
+    if (listEl) listEl.innerHTML = '<p class="text-muted text-sm">שגיאה בטעינת קבצים</p>';
+  }
 }
 
-async function convertIdeaToProject(id) {
-  const idea = S.ideas.find(i => i.id === id);
-  if (!idea || idea.convertedProjectId) return;
-  showSpinner(true);
+async function uploadIdeaFile(idea, file) {
+  if (!idea.folderId) { toast('אין תיקיית Drive לרעיון', 'error'); return; }
+  const MAX = 20 * 1024 * 1024;
+  if (file.size > MAX) { toast(`${file.name} — גדול מ-20MB`, 'error'); return; }
+  toast(`מעלה: ${file.name}…`, 'info');
   try {
-    const project = {
-      id: uid(), name: idea.name, client: idea.clients||'', type:'client',
-      status: S.statuses[0]||'בתכנון', priority:3, deadline:'',
-      designs:[], files:[], log:[], createdAt: new Date().toISOString()
-    };
-    const pRes = await apiCall('saveProject', { project });
-    if (!pRes.ok) throw new Error('שגיאה ביצירת פרויקט');
-    idea.convertedProjectId = project.id;
-    await apiCall('saveIdea', { idea });
-    S.projects.unshift(project);
-    const idx = S.ideas.findIndex(i => i.id === id);
-    if (idx>=0) S.ideas[idx] = idea;
-    renderAll();
-    renderIdeasWing();
-    closePanel('idea-panel');
-    toast('הרעיון הפך לפרויקט פעיל ✓');
-  } catch(e) { toast(e.message,'error'); } finally { showSpinner(false); }
+    const base64 = await fileToBase64(file);
+    await apiCall('uploadFile', {
+      folderId: idea.folderId,
+      filename: file.name,
+      base64,
+      mimeType: file.type || 'application/octet-stream'
+    });
+    toast(`${file.name} הועלה ✓`, 'success');
+    loadIdeaFiles(idea);
+  } catch(e) {
+    toast('שגיאה בהעלאה: ' + e.message, 'error');
+  }
+}
+
+async function deleteIdeaFile(fileId, btn) {
+  if (!confirm('למחוק את הקובץ מ-Drive?')) return;
+  try {
+    await apiCall('deleteFile', { fileId });
+    btn.closest('.project-file-item').remove();
+    toast('קובץ נמחק', 'success');
+  } catch(e) {
+    toast('שגיאה במחיקה: ' + e.message, 'error');
+  }
+}
+
+async function convertIdeaToProject() {
+  const idea = S.ideas.find(i => i.id === S.panelIdeaId);
+  if (!idea) return;
+  closePanel('idea-panel');
+  window._convertingIdeaId = idea.id;
+  document.getElementById('add-project-name').value   = idea.name;
+  document.getElementById('add-project-client').value = idea.clients || '';
+  document.getElementById('add-project-type').value   = 'client';
+  document.getElementById('add-project-deadline').value = '';
+  const statusSel = document.getElementById('add-project-status');
+  statusSel.innerHTML = S.statuses.map((s, i) =>
+    `<option value="${escHtml(s)}"${i===0?' selected':''}>${escHtml(s)}</option>`
+  ).join('');
+  openModalEl(document.getElementById('add-modal'));
+}
+
+function openAddIdeaModal() {
+  document.getElementById('add-idea-name').value        = '';
+  document.getElementById('add-idea-description').value = '';
+  document.getElementById('add-idea-stage').value       = '';
+  openModalEl(document.getElementById('add-idea-modal'));
+}
+
+async function submitAddIdea() {
+  const name = document.getElementById('add-idea-name').value.trim();
+  if (!name) { toast('שם הרעיון הוא שדה חובה', 'error'); return; }
+  const idea = {
+    id: uid(), name,
+    description:       document.getElementById('add-idea-description').value.trim(),
+    stage:             document.getElementById('add-idea-stage').value.trim(),
+    category: '', clients: '', notes: '',
+    folderId: '', convertedProjectId: '',
+    createdAt: new Date().toISOString()
+  };
+  const ok = await saveIdeaData(idea);
+  if (ok) {
+    closeModalEl(document.getElementById('add-idea-modal'));
+    renderIdeasList();
+    toast('רעיון נוסף ✓', 'success');
+  }
 }
 
 // ================================================================
 // PRODUCTS WING (placeholder)
 // ================================================================
-
 function renderProductsWing() {
   document.getElementById('wing-content').innerHTML = `
     <div class="wing-header">
+      <button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>
       <h2 class="wing-title">📦 מוצרים וספקים</h2>
     </div>
-    <div class="empty-state" style="margin-top:3rem;">
-      <div class="empty-icon">📦</div>
-      <div>מודול זה בפיתוח</div>
+    <div class="empty-state" style="padding:3rem 1rem;">
+      <div class="empty-icon">🚧</div>
+      <p>בפיתוח — בקרוב</p>
     </div>`;
 }
+
 
 // ================================================================
 // INIT
