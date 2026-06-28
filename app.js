@@ -1610,7 +1610,7 @@ function openWing(name) {
 
   if      (name === 'clients')  loadAndRenderClientsWing();
   else if (name === 'ideas')    loadAndRenderIdeasWing();
-  else if (name === 'products') renderProductsWing();
+  else if (name === 'products') { S.productsSubTab = null; renderProductsWing(); }
 }
 
 // ================================================================
@@ -2110,25 +2110,48 @@ async function submitAddIdea() {
 // PRODUCTS WING
 // ================================================================
 function renderProductsWing() {
-  const tab = S.productsSubTab || 'manufacturers';
-  document.getElementById('wing-content').innerHTML = `
-    <div class="wing-header">
-      <button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>
-      <h2 class="wing-title">📦 מוצרים וספקים</h2>
-    </div>
-    <div class="wing-tabs">
-      <button class="wing-tab${tab === 'manufacturers' ? ' active' : ''}" onclick="switchProductsTab('manufacturers')">🏭 יצרנים</button>
-      <button class="wing-tab${tab === 'products' ? ' active' : ''}" onclick="switchProductsTab('products')">📦 מוצרים</button>
-    </div>
-    <div id="products-tab-content"></div>`;
+  const wc  = document.getElementById('wing-content');
+  const sub = S.productsSubTab;
 
-  if (tab === 'manufacturers') loadAndRenderManufacturersTab();
-  else {
-    document.getElementById('products-tab-content').innerHTML = `
-      <div class="empty-state" style="padding:3rem 1rem;">
-        <div class="empty-icon">🚧</div><p>בפיתוח — בקרוב</p>
+  if (!sub) {
+    wc.innerHTML = `
+      <div class="wing-header">
+        <button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>
+        <h2 class="wing-title">📦 מוצרים וספקים</h2>
+      </div>
+      <div class="wing-tiles">
+        <button class="wing-tile" onclick="switchProductsTab('manufacturers')">
+          <span class="wing-tile-icon">🏭</span>
+          <span class="wing-tile-label">יצרנים</span>
+        </button>
+        <button class="wing-tile" onclick="switchProductsTab('products')">
+          <span class="wing-tile-icon">📦</span>
+          <span class="wing-tile-label">מוצרים</span>
+        </button>
       </div>`;
+    return;
   }
+
+  if (sub === 'manufacturers') {
+    wc.innerHTML = `
+      <div class="wing-header">
+        <button class="btn-wing-back" onclick="switchProductsTab(null)">← חזרה</button>
+        <h2 class="wing-title">🏭 יצרנים</h2>
+        <button class="btn-gold btn-sm" onclick="openAddManufacturerModal()">+ יצרן</button>
+      </div>
+      <div id="manufacturers-list-container"></div>`;
+    loadManufacturers();
+    return;
+  }
+
+  wc.innerHTML = `
+    <div class="wing-header">
+      <button class="btn-wing-back" onclick="switchProductsTab(null)">← חזרה</button>
+      <h2 class="wing-title">📦 מוצרים</h2>
+    </div>
+    <div class="empty-state" style="padding:3rem 1rem;">
+      <div class="empty-icon">🚧</div><p>בפיתוח — בקרוב</p>
+    </div>`;
 }
 
 function switchProductsTab(tab) {
@@ -2139,30 +2162,25 @@ function switchProductsTab(tab) {
 // ================================================================
 // MANUFACTURERS TAB
 // ================================================================
-async function loadAndRenderManufacturersTab() {
-  const container = document.getElementById('products-tab-content');
-  if (!container) return;
-  container.innerHTML = '<div style="padding:1rem;color:var(--text-muted)">טוען...</div>';
+async function loadManufacturers() {
+  const c = document.getElementById('manufacturers-list-container');
+  if (!c) return;
+  c.innerHTML = '<div style="padding:1rem;color:var(--text-muted)">טוען...</div>';
   try {
     const result = await apiCall('getManufacturers');
     S.manufacturers = result.manufacturers || [];
     renderManufacturersList();
   } catch(e) {
-    container.innerHTML = `<p style="padding:1rem;color:var(--text-muted)">שגיאה: ${escHtml(e.message)}</p>`;
+    c.innerHTML = `<p style="padding:1rem;color:var(--text-muted)">שגיאה: ${escHtml(e.message)}</p>`;
   }
 }
 
 function renderManufacturersList() {
-  const container = document.getElementById('products-tab-content');
-  if (!container) return;
-
-  const header = `
-    <div class="wing-list-header">
-      <button class="btn-gold btn-sm" onclick="openAddManufacturerModal()">+ יצרן</button>
-    </div>`;
+  const c = document.getElementById('manufacturers-list-container');
+  if (!c) return;
 
   if (!S.manufacturers.length) {
-    container.innerHTML = header + `
+    c.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">🏭</div>
         <p>אין יצרנים עדיין</p>
@@ -2170,7 +2188,7 @@ function renderManufacturersList() {
     return;
   }
 
-  container.innerHTML = header + `
+  c.innerHTML = `
     <div class="wing-list">
       ${S.manufacturers.map(m => `
         <div class="wing-item" onclick="openManufacturerPanel('${escHtml(m.id)}')">
