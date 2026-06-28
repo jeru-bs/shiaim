@@ -1571,10 +1571,10 @@ function wireEvents() {
   document.getElementById('btn-delete-client').addEventListener('click', deleteClientConfirm);
 
   // Add idea modal
-  document.getElementById('btn-submit-add-idea').addEventListener('click', submitAddIdea);
+  document.getElementById('btn-submit-add-idea')?.addEventListener('click', submitAddIdea);
 
   // Add client modal
-  document.getElementById('btn-submit-add-client').addEventListener('click', submitAddClient);
+  document.getElementById('btn-submit-add-client')?.addEventListener('click', submitAddClient);
 
   // Add manufacturer modal
   document.getElementById('btn-submit-add-manufacturer').addEventListener('click', submitAddManufacturer);
