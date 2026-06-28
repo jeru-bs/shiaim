@@ -1618,3 +1618,49 @@ a { text-decoration: none; color: inherit; }
 }
 
 .notes-area { min-height: 180px; resize: vertical; }
+
+/* -- Wing List Items -- */
+.wing-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.wing-item:hover {
+  border-color: var(--navy-light);
+  box-shadow: var(--shadow-sm);
+}
+.wing-item-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+.wing-item-meta {
+  font-size: 0.78rem;
+  color: var(--text-sec);
+  display: flex;
+  gap: 0.5rem;
+}
+.panel-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+.panel-section-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0;
+}
+.btn-sm {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+}
