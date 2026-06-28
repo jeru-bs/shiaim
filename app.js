@@ -61,11 +61,14 @@ const S = {
   panelProjectId: null,
   panelDesignId:  null,
   panelTab:       'details',
-  panelIdeaId:   null,
-  panelClientId: null,
-  currentWing:   null,
-  ideas:         [],
-  clients:       [],
+  panelIdeaId:          null,
+  panelClientId:        null,
+  panelManufacturerId:  null,
+  currentWing:          null,
+  productsSubTab:       'manufacturers',
+  ideas:                [],
+  clients:              [],
+  manufacturers:        [],
 };
 
 // ================================================================
@@ -1572,6 +1575,9 @@ function wireEvents() {
 
   // Add client modal
   document.getElementById('btn-submit-add-client').addEventListener('click', submitAddClient);
+
+  // Add manufacturer modal
+  document.getElementById('btn-submit-add-manufacturer').addEventListener('click', submitAddManufacturer);
 }
 
 
@@ -2101,18 +2107,256 @@ async function submitAddIdea() {
 }
 
 // ================================================================
-// PRODUCTS WING (placeholder)
+// PRODUCTS WING
 // ================================================================
 function renderProductsWing() {
+  const tab = S.productsSubTab || 'manufacturers';
   document.getElementById('wing-content').innerHTML = `
     <div class="wing-header">
       <button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>
       <h2 class="wing-title">📦 מוצרים וספקים</h2>
     </div>
-    <div class="empty-state" style="padding:3rem 1rem;">
-      <div class="empty-icon">🚧</div>
-      <p>בפיתוח — בקרוב</p>
+    <div class="wing-tabs">
+      <button class="wing-tab${tab === 'manufacturers' ? ' active' : ''}" onclick="switchProductsTab('manufacturers')">🏭 יצרנים</button>
+      <button class="wing-tab${tab === 'products' ? ' active' : ''}" onclick="switchProductsTab('products')">📦 מוצרים</button>
+    </div>
+    <div id="products-tab-content"></div>`;
+
+  if (tab === 'manufacturers') loadAndRenderManufacturersTab();
+  else {
+    document.getElementById('products-tab-content').innerHTML = `
+      <div class="empty-state" style="padding:3rem 1rem;">
+        <div class="empty-icon">🚧</div><p>בפיתוח — בקרוב</p>
+      </div>`;
+  }
+}
+
+function switchProductsTab(tab) {
+  S.productsSubTab = tab;
+  renderProductsWing();
+}
+
+// ================================================================
+// MANUFACTURERS TAB
+// ================================================================
+async function loadAndRenderManufacturersTab() {
+  const container = document.getElementById('products-tab-content');
+  if (!container) return;
+  container.innerHTML = '<div style="padding:1rem;color:var(--text-muted)">טוען...</div>';
+  try {
+    const result = await apiCall('getManufacturers');
+    S.manufacturers = result.manufacturers || [];
+    renderManufacturersList();
+  } catch(e) {
+    container.innerHTML = `<p style="padding:1rem;color:var(--text-muted)">שגיאה: ${escHtml(e.message)}</p>`;
+  }
+}
+
+function renderManufacturersList() {
+  const container = document.getElementById('products-tab-content');
+  if (!container) return;
+
+  const header = `
+    <div class="wing-list-header">
+      <button class="btn-gold btn-sm" onclick="openAddManufacturerModal()">+ יצרן</button>
     </div>`;
+
+  if (!S.manufacturers.length) {
+    container.innerHTML = header + `
+      <div class="empty-state">
+        <div class="empty-icon">🏭</div>
+        <p>אין יצרנים עדיין</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = header + `
+    <div class="wing-list">
+      ${S.manufacturers.map(m => `
+        <div class="wing-item" onclick="openManufacturerPanel('${escHtml(m.id)}')">
+          <div class="wing-item-name">${escHtml(m.name)}</div>
+          <div class="wing-item-sub">${escHtml(m.contact?.person || '')}${m.contact?.phone ? ' · ' + escHtml(m.contact.phone) : ''}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function openManufacturerPanel(id) {
+  S.panelManufacturerId = id;
+  const mfr = S.manufacturers.find(m => m.id === id);
+  if (!mfr) return;
+  const panel = document.getElementById('manufacturer-panel');
+  if (!panel) return;
+  panel.classList.remove('hidden');
+  renderManufacturerPanel(mfr);
+}
+
+function renderManufacturerPanel(mfr) {
+  const panel = document.getElementById('manufacturer-panel');
+  if (!panel) return;
+
+  const priceRows = (mfr.priceTable || []).map(row => `
+    <tr>
+      <td><input type="text" class="form-input price-qty" value="${escHtml(row.qty)}" placeholder="כמות" /></td>
+      <td><input type="text" class="form-input price-val" value="${escHtml(row.price)}" placeholder="מחיר ₪" /></td>
+      <td><button class="btn-icon-sm" onclick="removePriceRow(this)" title="מחק">✕</button></td>
+    </tr>`).join('');
+
+  panel.innerHTML = `
+    <div class="panel-header">
+      <button class="btn-panel-close" onclick="closePanel('manufacturer-panel')">✕</button>
+      <h3 class="panel-title" contenteditable="true" id="mfr-name-edit">${escHtml(mfr.name)}</h3>
+    </div>
+    <div class="panel-body">
+      <div class="panel-section">
+        <div class="panel-section-header">פרטי קשר</div>
+        <div class="field-grid">
+          <div class="field-item">
+            <span class="field-label">איש קשר</span>
+            <input type="text" class="form-input field-editable" data-field="contact.person"  value="${escHtml(mfr.contact?.person  || '')}" placeholder="שם איש קשר" />
+          </div>
+          <div class="field-item">
+            <span class="field-label">טלפון</span>
+            <input type="text" class="form-input field-editable" data-field="contact.phone"   value="${escHtml(mfr.contact?.phone   || '')}" placeholder="מספר טלפון" />
+          </div>
+          <div class="field-item">
+            <span class="field-label">אימייל</span>
+            <input type="email" class="form-input field-editable" data-field="contact.email"  value="${escHtml(mfr.contact?.email   || '')}" placeholder="כתובת אימייל" />
+          </div>
+          <div class="field-item">
+            <span class="field-label">כתובת</span>
+            <input type="text" class="form-input field-editable" data-field="contact.address" value="${escHtml(mfr.contact?.address || '')}" placeholder="כתובת מפעל" />
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-section-header" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>טבלת מחירים</span>
+          <button class="btn-sm btn-outline" onclick="addPriceRow()">+ שורה</button>
+        </div>
+        <table class="price-table">
+          <thead><tr><th>כמות</th><th>מחיר ₪</th><th></th></tr></thead>
+          <tbody id="price-tbody">${priceRows}</tbody>
+        </table>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-section-header">הערות</div>
+        <textarea class="form-input" id="mfr-notes" rows="3" placeholder="הערות...">${escHtml(mfr.notes || '')}</textarea>
+      </div>
+    </div>
+    <div class="panel-footer">
+      <button class="btn-gold" onclick="saveMfrPanel('${escHtml(mfr.id)}')">שמור</button>
+      <button class="btn-danger btn-sm" onclick="deleteManufacturerConfirm('${escHtml(mfr.id)}')">מחק</button>
+    </div>`;
+}
+
+function addPriceRow() {
+  const tbody = document.getElementById('price-tbody');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" class="form-input price-qty" placeholder="כמות" /></td>
+    <td><input type="text" class="form-input price-val" placeholder="מחיר ₪" /></td>
+    <td><button class="btn-icon-sm" onclick="removePriceRow(this)" title="מחק">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function removePriceRow(btn) {
+  btn.closest('tr').remove();
+}
+
+function collectPriceTable() {
+  return [...document.querySelectorAll('#price-tbody tr')].map(tr => ({
+    qty:   tr.querySelector('.price-qty')?.value.trim() || '',
+    price: tr.querySelector('.price-val')?.value.trim() || ''
+  })).filter(r => r.qty || r.price);
+}
+
+async function saveMfrPanel(id) {
+  const mfr = S.manufacturers.find(m => m.id === id);
+  if (!mfr) return;
+
+  const nameEl = document.getElementById('mfr-name-edit');
+  if (nameEl) mfr.name = nameEl.textContent.trim();
+
+  document.querySelectorAll('.field-editable').forEach(inp => {
+    const f = inp.dataset.field, v = inp.value.trim();
+    if (!mfr.contact) mfr.contact = {};
+    if (f === 'contact.person')  mfr.contact.person  = v;
+    if (f === 'contact.phone')   mfr.contact.phone   = v;
+    if (f === 'contact.email')   mfr.contact.email   = v;
+    if (f === 'contact.address') mfr.contact.address = v;
+  });
+
+  mfr.priceTable = collectPriceTable();
+  const notesEl = document.getElementById('mfr-notes');
+  if (notesEl) mfr.notes = notesEl.value.trim();
+
+  await saveManufacturerData(mfr);
+}
+
+async function saveManufacturerData(mfr) {
+  showSpinner(true);
+  try {
+    await apiCall('saveManufacturer', { manufacturer: mfr });
+    const idx = S.manufacturers.findIndex(m => m.id === mfr.id);
+    if (idx >= 0) S.manufacturers[idx] = mfr;
+    else S.manufacturers.push(mfr);
+    renderManufacturersList();
+    toast('יצרן נשמר ✓', 'success');
+    return true;
+  } catch(e) {
+    toast('שגיאה בשמירה: ' + e.message, 'error');
+    return false;
+  } finally {
+    showSpinner(false);
+  }
+}
+
+function deleteManufacturerConfirm(id) {
+  const mfr = S.manufacturers.find(m => m.id === id);
+  if (!mfr) return;
+  openConfirmModal({
+    title: 'מחיקת יצרן',
+    message: `למחוק את "${mfr.name}"? פעולה זו בלתי הפיכה.`,
+    btnLabel: 'מחק', btnClass: 'btn-danger',
+    action: async () => {
+      showSpinner(true);
+      try {
+        await apiCall('deleteManufacturer', { id: mfr.id });
+        S.manufacturers = S.manufacturers.filter(m => m.id !== mfr.id);
+        closePanel('manufacturer-panel');
+        renderManufacturersList();
+        toast('יצרן נמחק', 'success');
+      } catch(e) { toast('שגיאה במחיקה: ' + e.message, 'error'); }
+      finally    { showSpinner(false); }
+    }
+  });
+}
+
+function openAddManufacturerModal() {
+  const modal = document.getElementById('add-manufacturer-modal');
+  if (!modal) return;
+  document.getElementById('add-mfr-name').value  = '';
+  document.getElementById('add-mfr-phone').value = '';
+  modal.classList.remove('hidden');
+}
+
+async function submitAddManufacturer() {
+  const name = document.getElementById('add-mfr-name')?.value.trim();
+  if (!name) { toast('שם יצרן נדרש', 'error'); return; }
+  const mfr = {
+    id: uid(), name,
+    contact: {
+      person: '', phone: document.getElementById('add-mfr-phone')?.value.trim() || '',
+      email: '', address: ''
+    },
+    priceTable: [], notes: '',
+    createdAt: new Date().toISOString()
+  };
+  const ok = await saveManufacturerData(mfr);
+  if (ok) closeModalEl(document.getElementById('add-manufacturer-modal'));
 }
 
 
