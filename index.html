@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="שיאים">
-  <title>התנהלות שוטפת — שיאים</title>h
+  <title>התנהלות שוטפת — שיאים</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="app.css?v=12">
 </head>
@@ -214,6 +214,11 @@
 </div>
 
 <!-- ============================================================
+     MANUFACTURER DETAIL PANEL
+     ============================================================ -->
+<div id="manufacturer-panel" class="side-panel hidden"></div>
+
+<!-- ============================================================
      CHANGE FEED PANEL
      ============================================================ -->
 <div id="changes-panel" class="side-panel changes-panel">
@@ -267,6 +272,50 @@
     </div>
     <div class="modal-footer">
       <button id="btn-submit-add" class="btn-primary">הוסף פרויקט</button>
+      <button class="btn-secondary btn-modal-close">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     ADD MANUFACTURER MODAL
+     ============================================================ -->
+<div id="add-manufacturer-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">יצרן חדש</span>
+      <button class="btn-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">שם המפעל *</label>
+        <input type="text" id="add-mfr-name" class="form-input" placeholder="שם היצרן / מפעל" autocomplete="off" />
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">איש קשר</label>
+          <input type="text" id="add-mfr-person" class="form-input" placeholder="שם איש קשר" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">טלפון</label>
+          <input type="text" id="add-mfr-phone" class="form-input" placeholder="מספר טלפון" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">אימייל</label>
+          <input type="email" id="add-mfr-email" class="form-input" placeholder="כתובת אימייל" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">כתובת</label>
+          <input type="text" id="add-mfr-address" class="form-input" placeholder="כתובת מפעל" autocomplete="off" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">הערות</label>
+        <textarea id="add-mfr-notes" class="form-input" rows="3" placeholder="הערות נוספות..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-submit-add-manufacturer" class="btn-gold">הוסף יצרן</button>
       <button class="btn-secondary btn-modal-close">ביטול</button>
     </div>
   </div>
@@ -338,41 +387,9 @@
   </div>
 </div>
 
-
 <!-- ============================================================
      CHANGE PASSWORD MODAL
      ============================================================ -->
-<div id="change-password-modal" class="modal-backdrop hidden">
-  <div class="modal-box">
-    <div class="modal-header">
-      <span class="modal-title">שינוי סיסמה</span>
-      <button class="btn-modal-close">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">סיסמה נוכחית</label>
-        <input type="password" id="cp-current" class="form-input" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">סיסמה חדשה</label>
-        <input type="password" id="cp-new" class="form-input" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">אישור סיסמה חדשה</label>
-        <input type="password" id="cp-confirm" class="form-input" />
-      </div>
-      <div id="cp-error" class="login-error"></div>
-    </div>
-    <div class="modal-footer">
-      <button onclick="submitChangePassword()" class="btn-primary">עדכן סיסמה</button>
-      <button class="btn-secondary btn-modal-close">ביטול</button>
-    </div>
-  </div>
-</div>
-
-<script src="app.js?v=12"></script>
-</body>
-</html>
 <div id="change-password-modal" class="modal-backdrop hidden">
   <div class="modal-box" style="max-width:360px;">
     <div class="modal-header">
@@ -401,90 +418,6 @@
   </div>
 </div>
 
-
-<!-- ======================================== -->
-<!-- ADD IDEA MODAL -->
-<!-- ======================================== -->
-<div id="add-idea-modal" class="modal-backdrop hidden">
-  <div class="modal-box">
-    <div class="modal-header">
-      <span class="modal-title">רעיון חדש</span>
-      <button class="btn-modal-close">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">שם הרעיון *</label>
-        <input type="text" id="add-idea-name" class="form-input" placeholder="שם הרעיון" autocomplete="off" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">תיאור</label>
-        <input type="text" id="add-idea-description" class="form-input" placeholder="תיאור קצר" autocomplete="off" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">שלב</label>
-        <input type="text" id="add-idea-stage" class="form-input" placeholder="רעיון / בדיקה / פיתוח" autocomplete="off" />
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button id="btn-submit-add-idea" class="btn-gold">הוסף רעיון</button>
-    </div>
-  </div>
-</div>
-
-<!-- ======================================== -->
-<!-- ADD CLIENT MODAL -->
-<!-- ======================================== -->
-<div id="add-client-modal" class="modal-backdrop hidden">
-  <div class="modal-box">
-    <div class="modal-header">
-      <span class="modal-title">לקוח חדש</span>
-      <button class="btn-modal-close">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">שם הלקוח *</label>
-        <input type="text" id="add-client-name" class="form-input" placeholder="שם הלקוח" autocomplete="off" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">טלפון</label>
-        <input type="text" id="add-client-phone" class="form-input" placeholder="מספר טלפון" autocomplete="off" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">אימייל</label>
-        <input type="email" id="add-client-email" class="form-input" placeholder="כתובת אימייל" autocomplete="off" />
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button id="btn-submit-add-client" class="btn-gold">הוסף לקוח</button>
-    </div>
-  </div>
-</div>
-
-
-  <!-- Manufacturer Panel -->
-  <div id="manufacturer-panel" class="side-panel hidden"></div>
-
-  <!-- Add Manufacturer Modal -->
-  <div id="add-manufacturer-modal" class="modal-backdrop hidden">
-    <div class="modal-box">
-      <div class="modal-header">
-        <span class="modal-title">יצרן חדש</span>
-        <button class="btn-modal-close">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label">שם המפעל *</label>
-          <input type="text" id="add-mfr-name" class="form-input" placeholder="שם היצרן / מפעל" autocomplete="off" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">טלפון</label>
-          <input type="text" id="add-mfr-phone" class="form-input" placeholder="מספר טלפון" autocomplete="off" />
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button id="btn-submit-add-manufacturer" class="btn-gold">הוסף יצרן</button>
-      </div>
-    </div>
-  </div>
+<script src="app.js?v=20"></script>
 </body>
 </html>

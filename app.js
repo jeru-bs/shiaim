@@ -2356,8 +2356,12 @@ function deleteManufacturerConfirm(id) {
 function openAddManufacturerModal() {
   const modal = document.getElementById('add-manufacturer-modal');
   if (!modal) return;
-  document.getElementById('add-mfr-name').value  = '';
-  document.getElementById('add-mfr-phone').value = '';
+  document.getElementById('add-mfr-name').value    = '';
+  document.getElementById('add-mfr-person').value  = '';
+  document.getElementById('add-mfr-phone').value   = '';
+  document.getElementById('add-mfr-email').value   = '';
+  document.getElementById('add-mfr-address').value = '';
+  document.getElementById('add-mfr-notes').value   = '';
   modal.classList.remove('hidden');
 }
 
@@ -2367,10 +2371,13 @@ async function submitAddManufacturer() {
   const mfr = {
     id: uid(), name,
     contact: {
-      person: '', phone: document.getElementById('add-mfr-phone')?.value.trim() || '',
-      email: '', address: ''
+      person:  document.getElementById('add-mfr-person')?.value.trim()  || '',
+      phone:   document.getElementById('add-mfr-phone')?.value.trim()   || '',
+      email:   document.getElementById('add-mfr-email')?.value.trim()   || '',
+      address: document.getElementById('add-mfr-address')?.value.trim() || ''
     },
-    priceTable: [], notes: '',
+    priceTable: [],
+    notes: document.getElementById('add-mfr-notes')?.value.trim() || '',
     createdAt: new Date().toISOString()
   };
   const ok = await saveManufacturerData(mfr);
