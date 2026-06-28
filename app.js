@@ -1903,7 +1903,7 @@ function renderIdeaPanel(idea) {
       </div>
       <div class="project-files-list" id="idea-files-list">
         ${idea.folderId
-          ? '<p class="text-muted text-sm">אין קבצים עדיין</p>'
+          ? '<p class="text-muted text-sm">טוען קבצים…</p>'
           : '<p class="text-muted text-sm">צור תיקייה כדי לצרף קבצים</p>'}
       </div>
     </div>`;
@@ -1980,7 +1980,8 @@ async function deleteIdeaConfirm() {
       try {
         await apiCall('deleteIdea', { id: idea.id });
         S.ideas = S.ideas.filter(i => i.id !== idea.id);
-        closePanel('idea-pan`       renderIdeasList();
+        closePanel('idea-panel');
+        renderIdeasList();
         toast('רעיון נמחק', 'success');
       } catch(e) { toast('שגיאה במחיקה: ' + e.message, 'error'); }
       finally    { showSpinner(false); }
