@@ -1735,6 +1735,303 @@ function wireEvents() {
 }
 
 // ================================================================
+// WING NAVIGATION
+// ================================================================
+
+function openWing(name) {
+  if (S.currentWing === name) { closeWing(); return; }
+  S.currentWing = name;
+
+  document.querySelectorAll('.wing-tile').forEach(t => {
+    const oc = t.getAttribute('onclick') || '';
+    t.classList.toggle('active', oc.includes(`'${name}'`));
+  });
+
+  document.getElementById('wing-content').classList.remove('hidden');
+  document.getElementById('project-list').classList.add('hidden');
+  closeAllPanels();
+
+  if (name === 'clients')  renderClientsWing();
+  else if (name === 'ideas')    renderIdeasWing();
+  else if (name === 'products') renderProductsWing();
+}
+
+function closeWing() {
+  S.currentWing = null;
+  document.querySelectorAll('.wing-tile').forEach(t => t.classList.remove('active'));
+  document.getElementById('wing-content').classList.add('hidden');
+  document.getElementById('project-list').classList.remove('hidden');
+}
+
+// ================================================================
+// CLIENTS WING
+// ================================================================
+
+function renderClientsWing() {
+  const el = document.getElementById('wing-content');
+  const list = S.clients.filter(c =>
+    !S.clientSearch || c.name?.toLowerCase().includes(S.clientSearch.toLowerCase())
+  );
+  el.innerHTML = `
+    <div class="wing-header">
+      <h2 class="wing-title">👤 לקוחות</h2>
+      <div class="wing-actions">
+        <input type="search" class="filter-search" placeholder="🔍 חיפוש לקוח..."
+          value="${escHtml(S.clientSearch)}"
+          oninput="S.clientSearch=this.value;renderClientsWing()" />
+        <button class="btn-primary" onclick="addClientData()">+ לקוח חדש</button>
+      </div>
+    </div>
+    <div class="wing-list">
+      ${list.length === 0
+        ? '<div class="empty-state"><div class="empty-icon">👤</div><div>אין לקוחות</div></div>'
+        : list.map(c => `
+            <div class="wing-item" onclick="openClientPanel('${c.id}')">
+              <div class="wing-item-title">${escHtml(c.name || '—')}</div>
+              <div class="wing-item-meta">
+                ${c.phone ? `📞 ${escHtml(c.phone)}` : ''}
+                ${c.email ? ` · ✉️ ${escHtml(c.email)}` : ''}
+              </div>
+            </div>`).join('')}
+    </div>`;
+}
+
+function openClientPanel(id) {
+  S.clientPanelId = id;
+  renderClientPanel(S.clients.find(c => c.id === id) || { id });
+  openPanel('client-panel');
+}
+
+function renderClientPanel(client) {
+  document.querySelector('#client-panel .panel-body').innerHTML = `
+    <div class="panel-section">
+      <div class="form-group">
+        <label class="form-label">שם *</label>
+        <input type="text" id="cpi-name" class="form-input" value="${escHtml(client.name||'')}" placeholder="שם הלקוח" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">טלפון</label>
+        <input type="text" id="cpi-phone" class="form-input" value="${escHtml(client.phone||'')}" placeholder="050-0000000" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">אימייל</label>
+        <input type="email" id="cpi-email" class="form-input" value="${escHtml(client.email||'')}" placeholder="example@email.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">כתובת</label>
+        <input type="text" id="cpi-address" class="form-input" value="${escHtml(client.address||'')}" placeholder="כתובת" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">הערות</label>
+        <textarea id="cpi-notes" class="form-input" rows="3" placeholder="הערות...">${escHtml(client.notes||'')}</textarea>
+      </div>
+      <button class="btn-primary" style="width:100%;margin-top:1rem;" onclick="saveClientData('${client.id}')">💾 שמור</button>
+    </div>`;
+}
+
+async function addClientData() {
+  const c = { id: uid(), name: 'לקוח חדש', phone:'', email:'', address:'', notes:'', createdAt: new Date().toISOString() };
+  showSpinner(true);
+  try {
+    const res = await apiCall('saveClient', { client: c });
+    if (res.ok) { S.clients.unshift(c); renderClientsWing(); openClientPanel(c.id); toast('לקוח חדש נוצר'); }
+    else toast('שגיאה ביצירת לקוח', 'error');
+  } catch(e) { toast(e.message, 'error'); } finally { showSpinner(false); }
+}
+
+async function saveClientData(id) {
+  const name    = document.getElementById('cpi-name')?.value.trim();
+  const phone   = document.getElementById('cpi-phone')?.value.trim();
+  const email   = document.getElementById('cpi-email')?.value.trim();
+  const address = document.getElementById('cpi-address')?.value.trim();
+  const notes   = document.getElementById('cpi-notes')?.value.trim();
+  if (!name) { toast('שם לקוח חובה', 'error'); return; }
+  const idx = S.clients.findIndex(c => c.id === id);
+  const client = idx >= 0 ? { ...S.clients[idx] } : { id };
+  Object.assign(client, { name, phone, email, address, notes });
+  showSpinner(true);
+  try {
+    const res = await apiCall('saveClient', { client });
+    if (res.ok) { if (idx>=0) S.clients[idx]=client; else S.clients.unshift(client); renderClientsWing(); toast('לקוח נשמר ✓'); }
+    else toast('שגיאה בשמירה', 'error');
+  } catch(e) { toast(e.message,'error'); } finally { showSpinner(false); }
+}
+
+async function deleteClientData(id) {
+  showSpinner(true);
+  try {
+    const res = await apiCall('deleteClient', { id });
+    if (res.ok) { S.clients = S.clients.filter(c => c.id !== id); closePanel('client-panel'); renderClientsWing(); toast('לקוח נמחק'); }
+    else toast('שגיאה במחיקה', 'error');
+  } catch(e) { toast(e.message,'error'); } finally { showSpinner(false); }
+}
+
+// ================================================================
+// IDEAS WING
+// ================================================================
+
+function renderIdeasWing() {
+  const el = document.getElementById('wing-content');
+  if (!el || S.currentWing !== 'ideas') return;
+  const stages = [...new Set(S.ideas.map(i => i.stage).filter(Boolean))];
+  const list = S.ideas.filter(i => {
+    if (S.ideaSearch && !i.name?.toLowerCase().includes(S.ideaSearch.toLowerCase())) return false;
+    if (S.ideaStageFilt && i.stage !== S.ideaStageFilt) return false;
+    return true;
+  });
+  el.innerHTML = `
+    <div class="wing-header">
+      <h2 class="wing-title">💡 רעיונות</h2>
+      <div class="wing-actions">
+        <input type="search" class="filter-search" placeholder="🔍 חיפוש רעיון..."
+          value="${escHtml(S.ideaSearch)}"
+          oninput="S.ideaSearch=this.value;renderIdeasWing()" />
+        <select class="filter-select" onchange="S.ideaStageFilt=this.value;renderIdeasWing()">
+          <option value="">כל השלבים</option>
+          ${stages.map(s=>`<option value="${escHtml(s)}" ${S.ideaStageFilt===s?'selected':''}>${escHtml(s)}</option>`).join('')}
+        </select>
+        <button class="btn-primary" onclick="addIdeaData()">+ רעיון חדש</button>
+      </div>
+    </div>
+    <div class="wing-list">
+      ${list.length === 0
+        ? '<div class="empty-state"><div class="empty-icon">💡</div><div>אין רעיונות</div></div>'
+        : list.map(i => `
+            <div class="wing-item${i.convertedProjectId?' converted':''}" onclick="openIdeaPanel('${i.id}')">
+              <div class="wing-item-title">${escHtml(i.name||'—')}${i.convertedProjectId?' ✅':''}</div>
+              <div class="wing-item-meta">
+                ${i.stage?`<span class="status-badge">${escHtml(i.stage)}</span>`:''}
+                ${i.category?` · ${escHtml(i.category)}`:''}
+              </div>
+            </div>`).join('')}
+    </div>`;
+}
+
+function openIdeaPanel(id) {
+  S.ideaPanelId = id;
+  const idea = S.ideas.find(i => i.id === id) || { id };
+  renderIdeaPanel(idea);
+  openPanel('idea-panel');
+  const btn = document.getElementById('btn-convert-idea');
+  if (btn) btn.disabled = !!(idea.convertedProjectId);
+}
+
+function renderIdeaPanel(idea) {
+  const STAGES = ['ראשוני','בחינה','פיתוח','מוכן'];
+  document.querySelector('#idea-panel .panel-body').innerHTML = `
+    <div class="panel-section">
+      <div class="form-group">
+        <label class="form-label">שם הרעיון *</label>
+        <input type="text" id="ipi-name" class="form-input" value="${escHtml(idea.name||'')}" placeholder="שם הרעיון" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">תיאור</label>
+        <textarea id="ipi-description" class="form-input" rows="3" placeholder="תיאור...">${escHtml(idea.description||'')}</textarea>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">שלב</label>
+          <select id="ipi-stage" class="form-select">
+            <option value="">—</option>
+            ${STAGES.map(s=>`<option value="${s}" ${idea.stage===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">קטגוריה</label>
+          <input type="text" id="ipi-category" class="form-input" value="${escHtml(idea.category||'')}" placeholder="קטגוריה" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">לקוחות רלוונטיים</label>
+        <input type="text" id="ipi-clients" class="form-input" value="${escHtml(idea.clients||'')}" placeholder="שמות לקוחות..." />
+      </div>
+      <div class="form-group">
+        <label class="form-label">הערות</label>
+        <textarea id="ipi-notes" class="form-input" rows="2" placeholder="הערות...">${escHtml(idea.notes||'')}</textarea>
+      </div>
+      ${idea.convertedProjectId?'<div class="info-badge">✅ הרעיון הפך לפרויקט פעיל</div>':''}
+      <button class="btn-primary" style="width:100%;margin-top:1rem;" onclick="saveIdeaData('${idea.id}')">💾 שמור</button>
+    </div>`;
+}
+
+async function addIdeaData() {
+  const i = { id:uid(), name:'רעיון חדש', description:'', stage:'ראשוני', category:'', clients:'', notes:'', createdAt:new Date().toISOString() };
+  showSpinner(true);
+  try {
+    const res = await apiCall('saveIdea', { idea: i });
+    if (res.ok) { S.ideas.unshift(i); renderIdeasWing(); openIdeaPanel(i.id); toast('רעיון חדש נוצר'); }
+    else toast('שגיאה ביצירת רעיון', 'error');
+  } catch(e) { toast(e.message,'error'); } finally { showSpinner(false); }
+}
+
+async function saveIdeaData(id) {
+  const name        = document.getElementById('ipi-name')?.value.trim();
+  const description = document.getElementById('ipi-description')?.value.trim();
+  const stage       = document.getElementById('ipi-stage')?.value;
+  const category    = document.getElementById('ipi-category')?.value.trim();
+  const clients     = document.getElementById('ipi-clients')?.value.trim();
+  const notes       = document.getElementById('ipi-notes')?.value.trim();
+  if (!name) { toast('שם הרעיון חובה','error'); return; }
+  const idx = S.ideas.findIndex(i => i.id === id);
+  const idea = idx>=0 ? { ...S.ideas[idx] } : { id };
+  Object.assign(idea, { name, description, stage, category, clients, notes });
+  showSpinner(true);
+  try {
+    const res = await apiCall('saveIdea', { idea });
+    if (res.ok) { if (idx>=0) S.ideas[idx]=idea; else S.ideas.unshift(idea); renderIdeasWing(); toast('רעיון נשמר ✓'); }
+    else toast('שגיאה בשמירה','error');
+  } catch(e) { toast(e.message,'error'); } finally { showSpinner(false); }
+}
+
+async function deleteIdeaData(id) {
+  showSpinner(true);
+  try {
+    const res = await apiCall('deleteIdea', { id });
+    if (res.ok) { S.ideas = S.ideas.filter(i => i.id !== id); closePanel('idea-panel'); renderIdeasWing(); toast('רעיון נמחק'); }
+    else toast('שגיאה במחיקה','error');
+  } catch(e) { toast(e.message,'error'); } finally { showSpinner(false); }
+}
+
+async function convertIdeaToProject(id) {
+  const idea = S.ideas.find(i => i.id === id);
+  if (!idea || idea.convertedProjectId) return;
+  showSpinner(true);
+  try {
+    const project = {
+      id: uid(), name: idea.name, client: idea.clients||'', type:'client',
+      status: S.statuses[0]||'בתכנון', priority:3, deadline:'',
+      designs:[], files:[], log:[], createdAt: new Date().toISOString()
+    };
+    const pRes = await apiCall('saveProject', { project });
+    if (!pRes.ok) throw new Error('שגיאה ביצירת פרויקט');
+    idea.convertedProjectId = project.id;
+    await apiCall('saveIdea', { idea });
+    S.projects.unshift(project);
+    const idx = S.ideas.findIndex(i => i.id === id);
+    if (idx>=0) S.ideas[idx] = idea;
+    renderAll();
+    renderIdeasWing();
+    closePanel('idea-panel');
+    toast('הרעיון הפך לפרויקט פעיל ✓');
+  } catch(e) { toast(e.message,'error'); } finally { showSpinner(false); }
+}
+
+// ================================================================
+// PRODUCTS WING (placeholder)
+// ================================================================
+
+function renderProductsWing() {
+  document.getElementById('wing-content').innerHTML = `
+    <div class="wing-header">
+      <h2 class="wing-title">📦 מוצרים וספקים</h2>
+    </div>
+    <div class="empty-state" style="margin-top:3rem;">
+      <div class="empty-icon">📦</div>
+      <div>מודול זה בפיתוח</div>
+    </div>`;
+}
+
+// ================================================================
 // INIT
 // ================================================================
 function init() {
