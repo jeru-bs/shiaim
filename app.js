@@ -350,8 +350,6 @@ function renderAll() {
 }
 
 function renderHeader() {
-  const el = document.getElementById('user-display');
-  el.innerHTML = `<span class="role-dot"></span><span>${escHtml(S.user.displayName)}</span>`;
   const isBoss = S.user.role === 'boss';
   document.getElementById('settings-btn').classList.toggle('hidden', !isBoss);
 }
