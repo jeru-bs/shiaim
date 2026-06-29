@@ -2545,3 +2545,18 @@ document.addEventListener('DOMContentLoaded', init);
     '</div>';
   document.body.appendChild(el);
 })();
+
+// Fix: prevent browser autocomplete from filling search with username
+(function() {
+  const fs = document.getElementById('filter-search');
+  if (fs) {
+    fs.setAttribute('autocomplete', 'off');
+    fs.value = '';
+    fs.addEventListener('focus', () => {
+      // Clear any browser-autofilled value that matches username pattern
+      setTimeout(() => {
+        if (fs.value && !S.filters.search) { fs.value = ''; }
+      }, 50);
+    });
+  }
+})();
