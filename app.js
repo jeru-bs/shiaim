@@ -2552,16 +2552,15 @@ document.addEventListener('DOMContentLoaded', init);
 // Fix: prevent browser autocomplete from filling search with username
 (function() {
   const fs = document.getElementById('filter-search');
-  if (fs) {
-    fs.setAttribute('autocomplete', 'off');
-    fs.value = '';
-    fs.addEventListener('focus', () => {
-      // Clear any browser-autofilled value that matches username pattern
-      setTimeout(() => {
-        if (fs.value && !S.filters.search) { fs.value = ''; }
-      }, 50);
-    });
-  }
+  if (!fs) return;
+  fs.setAttribute('autocomplete', 'new-password');
+  fs.value = '';
+  // Chrome autofills async after page load — clear repeatedly for 1.5s
+  let n = 0;
+  const iv = setInterval(function() {
+    if (fs.value && !S.filters.search) fs.value = '';
+    if (++n >= 15) clearInterval(iv);
+  }, 100);
 })();
 
 
