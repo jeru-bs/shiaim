@@ -2869,6 +2869,7 @@ async function _loadProdFiles(prod, type) {
           '<span class="file-icon">' + fileIcon(f.mimeType) + '</span>' +
           '<a class="file-name" href="' + escHtml(f.url) + '" target="_blank" rel="noopener">' + escHtml(f.name) + '</a>' +
           '<span class="file-size">' + formatFileSize(f.size) + '</span>' +
+          '<button class="btn-file-delete" onclick="deleteProdFile(\\'' + escHtml(f.id) + '\\',\\'' + escHtml(prod.id) + '\\',\\'' + type + '\\',this)" title="מחק">🗑</button>' +
           '</div>').join('')
       : '<p class="text-muted text-sm">אין קבצים עדיין</p>';
   } catch { el.innerHTML = '<p class="text-muted text-sm">שגיאה בטעינת קבצים</p>'; }
@@ -2891,6 +2892,17 @@ async function _uploadProdFile(prod, file, type) {
     toast(file.name + ' הועלה ✓', 'success');
     _loadProdFiles(prod, type);
   } catch(e) { toast('שגיאה בהעלאה: ' + e.message, 'error'); }
+}
+
+async function deleteProdFile(fileId, prodId, type, btn) {
+  if (!confirm('למחוק את הקובץ מ-Drive? פעולה זו בלתי הפיכה.')) return;
+  try {
+    await apiCall('deleteFile', { fileId });
+    btn.closest('.project-file-item').remove();
+    toast('קובץ נמחק', 'success');
+  } catch(e) {
+    toast('שגיאה במחיקה: ' + e.message, 'error');
+  }
 }
 
 async function saveProductPanel() {
