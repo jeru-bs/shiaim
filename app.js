@@ -2864,13 +2864,7 @@ async function _loadProdFiles(prod, type) {
     const r = await apiCall('getProjectFiles', { folderId: fid });
     const files = r.files || [];
     el.innerHTML = files.length
-      ? files.map(f =>
-          '<div class="project-file-item">' +
-          '<span class="file-icon">' + fileIcon(f.mimeType) + '</span>' +
-          '<a class="file-name" href="' + escHtml(f.url) + '" target="_blank" rel="noopener">' + escHtml(f.name) + '</a>' +
-          '<span class="file-size">' + formatFileSize(f.size) + '</span>' +
-          '<button class="btn-file-delete" onclick="deleteProdFile(\\'' + escHtml(f.id) + '\\',\\'' + escHtml(prod.id) + '\\',\\'' + type + '\\',this)" title="מחק">🗑</button>' +
-          '</div>').join('')
+      ? files.map(f => `<div class="project-file-item"><span class="file-icon">${fileIcon(f.mimeType)}</span><a class="file-name" href="${escHtml(f.url)}" target="_blank" rel="noopener">${escHtml(f.name)}</a><span class="file-size">${formatFileSize(f.size)}</span><button class="btn-file-delete" onclick="deleteProdFile('${escHtml(f.id)}','${escHtml(prod.id)}','${type}',this)" title="מחק">🗑</button></div>`).join('')
       : '<p class="text-muted text-sm">אין קבצים עדיין</p>';
   } catch { el.innerHTML = '<p class="text-muted text-sm">שגיאה בטעינת קבצים</p>'; }
 }
