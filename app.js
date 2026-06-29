@@ -2560,3 +2560,457 @@ document.addEventListener('DOMContentLoaded', init);
     });
   }
 })();
+
+
+// ================================================================
+// NOTIFICATIONS
+// ================================================================
+
+function computeNotifications() {
+  const lsTime = S.lastSeen ? new Date(S.lastSeen).getTime() : 0;
+  const TWO_DAYS = 172800000;
+  const others = S.changes.filter(c =>
+    c.user !== S.user.username && new Date(c.timestamp).getTime() > lsTime
+  );
+  S.notifs = {
+    newProjects:       others.filter(c => c.changeType === 'created'),
+    bossPriorities:    others.filter(c => c.changeType === 'priority' && c.user === 'yakov'),
+    projectChanges:    others.filter(c => ['note','status','field','file'].includes(c.changeType)),
+    upcomingDeadlines: S.projects.filter(p => {
+      if (p.completed || !p.deadline) return false;
+      const diff = new Date(p.deadline).getTime() - Date.now();
+      return diff > 0 && diff <= TWO_DAYS;
+    })
+  };
+  const tot = S.notifs.newProjects.length + S.notifs.bossPriorities.length +
+              S.notifs.projectChanges.length + S.notifs.upcomingDeadlines.length;
+  S.newCount = tot;
+  updateChangesBadge();
+}
+
+function renderAll() {
+  renderHeader();
+  renderProjectList();
+  updateChangesBadge();
+  updateFilterDropdowns();
+  saveToCache();
+  computeNotifications();
+}
+
+function openChangesPanel() {
+  _renderNotifPanel();
+  openPanel('changes-panel');
+  S.newCount = 0;
+  updateChangesBadge();
+}
+
+function _renderNotifPanel() {
+  const panel = document.getElementById('changes-panel');
+  const body  = panel.querySelector('.panel-body');
+  const sub   = panel.querySelector('.changes-subheader');
+  const n = S.notifs || { newProjects:[], bossPriorities:[], projectChanges:[], upcomingDeadlines:[] };
+  const tot = n.newProjects.length + n.bossPriorities.length +
+              n.projectChanges.length + n.upcomingDeadlines.length;
+  if (sub) sub.textContent = tot > 0 ? tot + ' התראות' : 'אין התראות חדשות';
+  const cl = body.querySelector('.changes-list');
+  if (!cl) return;
+  const bits = [];
+
+  if (n.upcomingDeadlines.length) {
+    bits.push('<div class="notif-group"><div class="notif-group-title">⏰ דדליינים קרובים</div>' +
+      n.upcomingDeadlines.map(p => {
+        const days = Math.ceil((new Date(p.deadline) - Date.now()) / 86400000);
+        return '<div class="change-item is-new" style="cursor:pointer" onclick="openProjectPanel(\'' +
+          escHtml(p.id) + '\');closePanel(\'changes-panel\')">' +
+          '<div class="change-icon status">⏰</div><div class="change-body">' +
+          '<div class="change-project">' + escHtml(p.name) + '</div>' +
+          '<div class="change-details">דדליין בעוד ' + days + ' ימים — ' + fmt.date(p.deadline) + '</div>' +
+          '</div></div>';
+      }).join('') + '</div>');
+  }
+
+  if (n.newProjects.length) {
+    bits.push('<div class="notif-group"><div class="notif-group-title">🆕 פרויקטים חדשים</div>' +
+      n.newProjects.map(c =>
+        '<div class="change-item is-new"><div class="change-icon created">✨</div><div class="change-body">' +
+        '<div class="change-project">' + escHtml(c.projectName) + '</div>' +
+        '<div class="change-details">נוצר ע"י ' + escHtml(CONFIG.USERS[c.user]?.displayName || c.user) + '</div>' +
+        '<div class="change-time">' + fmt.relativeTime(c.timestamp) + '</div>' +
+        '</div></div>').join('') + '</div>');
+  }
+
+  if (n.bossPriorities.length) {
+    bits.push('<div class="notif-group"><div class="notif-group-title">⭐ עד קעותיחת מהבוס</div>' +
+      n.bossPriorities.map(c =>
+        '<div class="change-item is-new"><div class="change-icon priority">⭐</div><div class="change-body">' +
+        '<div class="change-project">' + escHtml(c.projectName) + '</div>' +
+        '<div class="change-details">' + escHtml(c.details) + '</div>' +
+        '<div class="change-time">' + fmt.relativeTime(c.timestamp) + '</div>' +
+        '</div></div>').join('') + '</div>');
+  }
+
+  if (n.projectChanges.length) {
+    const imap = { status:'🔄', note:'💬', field:'✏️', file:'📎' };
+    bits.push('<div class="notif-group"><div class="notif-group-title">💬 שינויים בפרויקטים</div>' +
+      n.projectChanges.slice(0,8).map(c =>
+        '<div class="change-item is-new"><div class="change-icon ' + c.changeType + '">' +
+        (imap[c.changeType]||'✏️') + '</div><div class="change-body">' +
+        '<div class="change-project">' + escHtml(c.projectName) + '</div>' +
+        '<div class="change-details">' + escHtml(c.details) + ' — <strong>' +
+        escHtml(CONFIG.USERS[c.user]?.displayName || c.user) + '</strong></div>' +
+        '<div class="change-time">' + fmt.relativeTime(c.timestamp) + '</div>' +
+        '</div></div>').join('') +
+      (n.projectChanges.length > 8 ? '<div style="padding:.25rem .75rem;color:var(--text-muted);font-size:.8rem">+ ' + (n.projectChanges.length - 8) + ' שינויים נוספים</div>' : '') +
+      '</div>');
+  }
+
+  if (!bits.length) {
+    bits.push('<div class="empty-state"><div class="empty-icon">🔔</div><p>אין התראות חדשות</p></div>');
+  }
+
+  if (S.changes.length) {
+    const lsTime = S.lastSeen ? new Date(S.lastSeen).getTime() : 0;
+    const imap2 = {
+      status:{cls:'status',ic:'🔄'}, note:{cls:'note',ic:'💬'}, info:{cls:'info',ic:'ℹ️'},
+      priority:{cls:'priority',ic:'⭐'}, created:{cls:'created',ic:'✨'},
+      deleted:{cls:'deleted',ic:'🗑️'}, completed:{cls:'completed',ic:'✅'},
+      field:{cls:'field',ic:'✏️'}, file:{cls:'file',ic:'📎'}
+    };
+    bits.push('<div class="notif-group-title" style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">📋 כל הפעילות</div>' +
+      S.changes.slice(0,50).map(c => {
+        const ic   = imap2[c.changeType] || imap2.field;
+        const isN  = c.user !== S.user.username && new Date(c.timestamp).getTime() > lsTime;
+        const user = CONFIG.USERS[c.user]?.displayName || c.user;
+        return '<div class="change-item ' + (isN?'is-new':'') + '"><div class="change-icon ' + ic.cls + '">' + ic.ic + '</div>' +
+          '<div class="change-body"><div class="change-project">' + escHtml(c.projectName) + '</div>' +
+          '<div class="change-details">' + escHtml(c.details) + ' — <strong>' + escHtml(user) + '</strong></div>' +
+          '<div class="change-time">' + fmt.relativeTime(c.timestamp) + '</div></div></div>';
+      }).join(''));
+  }
+
+  cl.innerHTML = bits.join('');
+}
+
+(function() {
+  const s = document.createElement('style');
+  s.textContent = '.notif-group{margin-bottom:.5rem}.notif-group-title{font-size:.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;padding:.35rem .75rem;background:var(--bg-alt,rgba(0,0,0,.04));border-radius:4px;margin:.35rem 0}';
+  document.head.appendChild(s);
+})();
+
+// ================================================================
+// PRODUCTS WING — full implementation
+// ================================================================
+
+function renderProductsWing() {
+  const wc  = document.getElementById('wing-content');
+  const sub = S.productsSubTab;
+  if (!sub) {
+    wc.innerHTML =
+      '<div class="wing-header">' +
+      '<button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>' +
+      '<h2 class="wing-title">📦 מוצרים וספקים</h2></div>' +
+      '<div class="wing-tiles">' +
+      '<button class="wing-tile" onclick="switchProductsTab(\'manufacturers\')">' +
+      '<span class="wing-tile-icon">🏭</span><span class="wing-tile-label">יצרנים</span></button>' +
+      '<button class="wing-tile" onclick="switchProductsTab(\'products\')">' +
+      '<span class="wing-tile-icon">📦</span><span class="wing-tile-label">מוצרים</span></button>' +
+      '</div>';
+    return;
+  }
+  if (sub === 'manufacturers') {
+    wc.innerHTML =
+      '<div class="wing-header">' +
+      '<button class="btn-wing-back" onclick="switchProductsTab(null)">← חזרה</button>' +
+      '<h2 class="wing-title">🏭 יצרנים</h2>' +
+      '<button class="btn-add-wing" onclick="openModalEl(document.getElementById(\'add-manufacturer-modal\'))">+ הוסף</button>' +
+      '</div>' +
+      '<div class="wing-list-container" id="manufacturers-list-container">' +
+      '<div style="padding:1rem;color:var(--text-muted)">טוען...</div></div>';
+    loadManufacturers();
+    return;
+  }
+  if (sub === 'products') {
+    wc.innerHTML =
+      '<div class="wing-header">' +
+      '<button class="btn-wing-back" onclick="switchProductsTab(null)">← חזרה</button>' +
+      '<h2 class="wing-title">📦 מוצרים</h2>' +
+      '<button class="btn-add-wing" onclick="openAddProductModal()">+ הוסף מוצר</button>' +
+      '</div>' +
+      '<div class="wing-list-container" id="products-list-container">' +
+      '<div style="padding:1rem;color:var(--text-muted)">טוען...</div></div>';
+    loadProducts();
+  }
+}
+
+async function loadProducts() {
+  const c = document.getElementById('products-list-container');
+  if (!c) return;
+  try {
+    const r = await apiCall('getProducts');
+    S.products = r.products || [];
+    renderProductsList();
+  } catch(e) {
+    if (c) c.innerHTML = '<p style="padding:1rem;color:var(--text-muted)">' + escHtml(e.message) + '</p>';
+  }
+}
+
+function renderProductsList() {
+  const c = document.getElementById('products-list-container');
+  if (!c) return;
+  const dl = document.getElementById('products-datalist');
+  if (dl) dl.innerHTML = S.products.map(p => '<option value="' + escHtml(p.name) + '">').join('');
+  if (!S.products.length) {
+    c.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><p>אין מוצרים עדיין</p></div>';
+    return;
+  }
+  c.innerHTML = '<div class="wing-list">' + S.products.map(p =>
+    '<div class="wing-item" onclick="openProductPanel(\'' + escHtml(p.id) + '\')">' +
+    '<div class="wing-item-name">' + escHtml(p.name) + '</div>' +
+    '<div class="wing-item-sub">' + escHtml(p.manufacturerName || '') +
+    (p.barcode ? ' · ' + escHtml(p.barcode) : '') + '</div></div>'
+  ).join('') + '</div>';
+}
+
+function openProductPanel(id) {
+  const p = S.products.find(x => x.id === id);
+  if (!p) return;
+  S.panelProductId = id;
+  renderProductPanel(p);
+  openPanel('product-panel');
+}
+
+function renderProductPanel(prod) {
+  const panel = document.getElementById('product-panel');
+  if (!panel) return;
+  const mfrOpts = '<option value="">— ללא יצרן —</option>' +
+    S.manufacturers.map(m =>
+      '<option value="' + escHtml(m.name) + '"' + (m.name === prod.manufacturerName ? ' selected' : '') +
+      '>' + escHtml(m.name) + '</option>').join('');
+  const hasFld = !!prod.folderId;
+
+  panel.innerHTML =
+    '<div class="panel-header">' +
+    '<button class="btn-panel-close" onclick="closePanel(\'product-panel\')">✕</button>' +
+    '<h3 class="panel-title" contenteditable="true" id="prod-name-edit">' + escHtml(prod.name) + '</h3>' +
+    '</div>' +
+    '<div class="panel-body">' +
+
+    '<div class="panel-section">' +
+    '<div class="panel-section-header">פרטי מוצר</div>' +
+    '<div class="field-grid">' +
+    '<div class="field-item full"><span class="field-label">יצרן</span>' +
+    '<select class="form-input" id="prod-mfr-sel">' + mfrOpts + '</select></div>' +
+    '<div class="field-item"><span class="field-label">ברקוד</span>' +
+    '<input type="text" class="form-input" id="prod-barcode" value="' + escHtml(prod.barcode || '') + '" placeholder="ברקוד" /></div>' +
+    '</div></div>' +
+
+    '<div class="panel-section">' +
+    '<div class="section-title-row"><span class="section-title">מסמכי תקן</span>' +
+    (hasFld ? '<label class="btn-upload-file" for="prod-std-fi">📎 הוסף</label>' +
+    '<input type="file" id="prod-std-fi" class="file-input-hidden" multiple />' : '') +
+    '</div>' +
+    '<div class="project-files-list" id="prod-std-files">' +
+    (hasFld ? '<p class="text-muted text-sm">טוען...</p>' : '<p class="text-muted text-sm">אין קבצים</p>') +
+    '</div></div>' +
+
+    '<div class="panel-section">' +
+    '<div class="section-title-row"><span class="section-title">מסמכי אריזה / הוראות</span>' +
+    (hasFld ? '<label class="btn-upload-file" for="prod-pkg-fi">📎 הוסף</label>' +
+    '<input type="file" id="prod-pkg-fi" class="file-input-hidden" multiple />' : '') +
+    '</div>' +
+    '<div class="project-files-list" id="prod-pkg-files">' +
+    (hasFld ? '<p class="text-muted text-sm">טוען...</p>' : '<p class="text-muted text-sm">אין קבצים</p>') +
+    '</div></div>' +
+
+    '<div class="panel-section"><div class="section-title">הערות</div>' +
+    '<div class="log-list">' + renderLogEntries(prod.notes || [], 'notes-entry') + '</div>' +
+    '<div class="log-add-form">' +
+    '<textarea class="log-textarea" id="new-prod-note" placeholder="הוסף הערה..."></textarea>' +
+    '<button class="btn-gold" onclick="addProductNote()">הוסף הערה</button>' +
+    '</div></div>' +
+
+    '<div class="panel-section" style="display:flex;gap:.5rem;padding-top:.25rem">' +
+    '<button class="btn-gold" onclick="saveProductPanel()">שמור שינויים</button>' +
+    '<button class="btn-danger" onclick="deleteProduct(\'' + escHtml(prod.id) + '\')">מחק מוצר</button>' +
+    '</div>' +
+    '</div>';
+
+  const nameEl = panel.querySelector('#prod-name-edit');
+  if (nameEl) nameEl.addEventListener('blur', saveProductPanel);
+
+  if (hasFld) {
+    _loadProdFiles(prod, 'std');
+    _loadProdFiles(prod, 'pkg');
+    const sfi = panel.querySelector('#prod-std-fi');
+    if (sfi) sfi.addEventListener('change', async e => {
+      for (const f of [...e.target.files]) await _uploadProdFile(prod, f, 'std');
+      e.target.value = '';
+    });
+    const pfi = panel.querySelector('#prod-pkg-fi');
+    if (pfi) pfi.addEventListener('change', async e => {
+      for (const f of [...e.target.files]) await _uploadProdFile(prod, f, 'pkg');
+      e.target.value = '';
+    });
+  }
+}
+
+async function _loadProdFiles(prod, type) {
+  const el = document.getElementById('prod-' + type + '-files');
+  if (!el) return;
+  const fid = type === 'std' ? prod.stdFolderId : prod.pkgFolderId;
+  if (!fid) { el.innerHTML = '<p class="text-muted text-sm">אין קבצים עדיין</p>'; return; }
+  try {
+    const r = await apiCall('getProjectFiles', { folderId: fid });
+    const files = r.files || [];
+    el.innerHTML = files.length
+      ? files.map(f =>
+          '<div class="project-file-item">' +
+          '<span class="file-icon">' + fileIcon(f.mimeType) + '</span>' +
+          '<a class="file-name" href="' + escHtml(f.url) + '" target="_blank" rel="noopener">' + escHtml(f.name) + '</a>' +
+          '<span class="file-size">' + formatFileSize(f.size) + '</span>' +
+          '</div>').join('')
+      : '<p class="text-muted text-sm">אין קבצים עדיין</p>';
+  } catch { el.innerHTML = '<p class="text-muted text-sm">שגיאה בטעינת קבצים</p>'; }
+}
+
+async function _uploadProdFile(prod, file, type) {
+  toast('מעלה: ' + file.name + '...', 'info');
+  try {
+    const b64 = await fileToBase64(file);
+    const r = await apiCall('uploadProductFile', {
+      productId: prod.id, docType: type,
+      filename: file.name, base64: b64,
+      mimeType: file.type || 'application/octet-stream'
+    });
+    if (r.folderId)    prod.folderId    = r.folderId;
+    if (r.stdFolderId) prod.stdFolderId = r.stdFolderId;
+    if (r.pkgFolderId) prod.pkgFolderId = r.pkgFolderId;
+    const idx = S.products.findIndex(p => p.id === prod.id);
+    if (idx >= 0) S.products[idx] = prod;
+    toast(file.name + ' הועלה ✓', 'success');
+    _loadProdFiles(prod, type);
+  } catch(e) { toast('שגיאה בהעלאה: ' + e.message, 'error'); }
+}
+
+async function saveProductPanel() {
+  const prod = S.products.find(p => p.id === S.panelProductId);
+  if (!prod) return;
+  const n = document.getElementById('prod-name-edit');
+  const m = document.getElementById('prod-mfr-sel');
+  const b = document.getElementById('prod-barcode');
+  if (n && n.textContent.trim()) prod.name = n.textContent.trim();
+  if (m) prod.manufacturerName = m.value;
+  if (b) prod.barcode = b.value.trim();
+  const ok = await saveProductData(prod);
+  if (ok) { renderProductsList(); toast('נשמר ✓', 'success'); }
+}
+
+async function addProductNote() {
+  const prod = S.products.find(p => p.id === S.panelProductId);
+  if (!prod) return;
+  const ta = document.getElementById('new-prod-note');
+  const text = ta.value.trim();
+  if (!text) return;
+  prod.notes = [...(prod.notes || []), { date: new Date().toISOString(), user: S.user.username, text }];
+  const ok = await saveProductData(prod);
+  if (ok) { ta.value = ''; renderProductPanel(prod); toast('הערה נוספה ✓', 'success'); }
+}
+
+async function deleteProduct(id) {
+  if (!confirm('למחוק את המוצר?')) return;
+  try {
+    await apiCall('deleteProduct', { id });
+    S.products = S.products.filter(p => p.id !== id);
+    closePanel('product-panel');
+    renderProductsList();
+    toast('מוצר נמחק', 'success');
+  } catch(e) { toast('שגיאה במחיקה: ' + e.message, 'error'); }
+}
+
+async function saveProductData(prod) {
+  showSpinner(true);
+  try {
+    const r = await apiCall('saveProduct', { product: prod });
+    if (r.folderId) prod.folderId = r.folderId;
+    const idx = S.products.findIndex(p => p.id === prod.id);
+    if (idx >= 0) S.products[idx] = prod; else S.products.push(prod);
+    return true;
+  } catch(e) { toast('שגיאה בשמירה: ' + e.message, 'error'); return false; }
+  finally { showSpinner(false); }
+}
+
+function openAddProductModal() {
+  if (!S.manufacturers.length) {
+    apiCall('getManufacturers')
+      .then(r => { S.manufacturers = r.manufacturers || []; _openAddProdModal(); })
+      .catch(() => _openAddProdModal());
+  } else {
+    _openAddProdModal();
+  }
+}
+
+function _openAddProdModal() {
+  const m = document.getElementById('add-product-modal');
+  if (!m) return;
+  document.getElementById('add-prod-name').value = '';
+  document.getElementById('add-prod-barcode').value = '';
+  document.getElementById('add-prod-mfr').innerHTML =
+    '<option value="">— ללא יצרן —</option>' +
+    S.manufacturers.map(x =>
+      '<option value="' + escHtml(x.name) + '">' + escHtml(x.name) + '</option>').join('');
+  openModalEl(m);
+}
+
+async function submitAddProduct() {
+  const name = document.getElementById('add-prod-name').value.trim();
+  if (!name) { toast('שם המוצר הוא שדה חובה', 'error'); return; }
+  const prod = {
+    id: uid(), name,
+    manufacturerName: document.getElementById('add-prod-mfr').value,
+    barcode:          document.getElementById('add-prod-barcode').value.trim(),
+    notes: [], folderId: '', stdFolderId: '', pkgFolderId: '',
+    createdAt: new Date().toISOString()
+  };
+  const ok = await saveProductData(prod);
+  if (ok) {
+    closeModalEl(document.getElementById('add-product-modal'));
+    renderProductsList();
+    toast('מוצר נוסף ✓', 'success');
+  }
+}
+
+// ── DOM injections ──
+(function injectProductDom() {
+  if (!document.getElementById('product-panel')) {
+    const el = document.createElement('div');
+    el.className = 'side-panel'; el.id = 'product-panel';
+    document.body.appendChild(el);
+  }
+  if (!document.getElementById('add-product-modal')) {
+    const el = document.createElement('div');
+    el.className = 'modal-backdrop hidden'; el.id = 'add-product-modal';
+    el.innerHTML =
+      '<div class="modal">' +
+      '<div class="modal-header"><h3>📦 מוצר חדש</h3>' +
+      '<button class="btn-modal-close">✕</button></div>' +
+      '<div class="modal-body">' +
+      '<div class="form-group"><label>שם מוצר *</label>' +
+      '<input type="text" id="add-prod-name" class="form-input" placeholder="שם המוצר" /></div>' +
+      '<div class="form-group"><label>יצרן</label>' +
+      '<select id="add-prod-mfr" class="form-input"><option value="">— ללא יצרן —</option></select></div>' +
+      '<div class="form-group"><label>ברקוד</label>' +
+      '<input type="text" id="add-prod-barcode" class="form-input" placeholder="ברקוד" /></div>' +
+      '</div>' +
+      '<div class="modal-footer">' +
+      '<button class="btn-gold" onclick="submitAddProduct()">הוסף מוצר</button>' +
+      '</div></div>';
+    document.body.appendChild(el);
+    el.querySelector('.btn-modal-close').addEventListener('click', () => closeModalEl(el));
+    el.addEventListener('click', e => { if (e.target === el) closeModalEl(el); });
+  }
+  if (!document.getElementById('products-datalist')) {
+    const dl = document.createElement('datalist');
+    dl.id = 'products-datalist';
+    document.body.appendChild(dl);
+  }
+})();
