@@ -1437,7 +1437,7 @@ function updateFilterDropdowns() {
 }
 
 function clearFilters() {
-  document.getElementById('filter-search').value   = '';
+  document.getElementById('proj-search').value   = '';
   document.getElementById('filter-type').value     = '';
   document.getElementById('filter-status').value   = '';
   document.getElementById('filter-priority').value = '';
@@ -1448,7 +1448,7 @@ function clearFilters() {
 }
 
 function applyFilters() {
-  S.filters.search   = document.getElementById('filter-search').value;
+  S.filters.search   = document.getElementById('proj-search').value;
   S.filters.type     = document.getElementById('filter-type').value;
   S.filters.status   = document.getElementById('filter-status').value;
   S.filters.priority = document.getElementById('filter-priority').value;
@@ -1500,7 +1500,7 @@ function wireEvents() {
   document.getElementById('overlay').addEventListener('click', closeAllPanels);
 
   // Filters
-  document.getElementById('filter-search').addEventListener('input', applyFilters);
+  document.getElementById('proj-search').addEventListener('input', applyFilters);
   document.getElementById('filter-type').addEventListener('change', applyFilters);
   document.getElementById('filter-status').addEventListener('change', applyFilters);
   document.getElementById('filter-priority').addEventListener('change', applyFilters);
@@ -2549,21 +2549,7 @@ document.addEventListener('DOMContentLoaded', init);
   document.body.appendChild(el);
 })();
 
-// Fix: prevent browser autocomplete from filling search with username
-// readonly prevents Chrome autofill entirely; removed on first user interaction
-(function() {
-  const fs = document.getElementById('filter-search');
-  if (!fs) return;
-  fs.setAttribute('readonly', '');
-  fs.value = '';
-  function unlock() {
-    fs.removeAttribute('readonly');
-    fs.removeEventListener('focus', unlock);
-    fs.removeEventListener('click', unlock);
-  }
-  fs.addEventListener('focus', unlock);
-  fs.addEventListener('click', unlock);
-})();
+// Search field id changed to proj-search to prevent Chrome form-history autofill
 
 
 // ================================================================
