@@ -2903,7 +2903,7 @@ async function saveProductPanel() {
   if (m) prod.manufacturerName = m.value;
   if (b) prod.barcode = b.value.trim();
   const ok = await saveProductData(prod);
-  if (ok) { renderProductsList(); toast('נשמר ✓', 'success'); }
+  if (ok) { renderProductsList(); closePanel('product-panel'); toast('נשמר ✓', 'success'); }
 }
 
 async function addProductNote() {
