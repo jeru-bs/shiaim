@@ -2484,7 +2484,10 @@ async function submitAddManufacturer() {
     createdAt: new Date().toISOString()
   };
   const ok = await saveManufacturerData(mfr);
-  if (ok) closeModalEl(document.getElementById('add-manufacturer-modal'));
+  if (ok) {
+    closeModalEl(document.getElementById('add-manufacturer-modal'));
+    openManufacturerPanel(mfr.id);
+  }
 }
 
 
@@ -2806,8 +2809,8 @@ function renderProductPanel(prod) {
 
     '<div class="panel-section">' +
     '<div class="section-title-row"><span class="section-title">מסמכי תקן</span>' +
-    (hasFld ? '<label class="btn-upload-file" for="prod-std-fi">📎 הוסף</label>' +
-    '<input type="file" id="prod-std-fi" class="file-input-hidden" multiple />' : '') +
+    '<label class="btn-upload-file" for="prod-std-fi">📎 הוסף</label>' +
+    '<input type="file" id="prod-std-fi" class="file-input-hidden" multiple />' +
     '</div>' +
     '<div class="project-files-list" id="prod-std-files">' +
     (hasFld ? '<p class="text-muted text-sm">טוען...</p>' : '<p class="text-muted text-sm">אין קבצים</p>') +
@@ -2815,8 +2818,8 @@ function renderProductPanel(prod) {
 
     '<div class="panel-section">' +
     '<div class="section-title-row"><span class="section-title">מסמכי אריזה / הוראות</span>' +
-    (hasFld ? '<label class="btn-upload-file" for="prod-pkg-fi">📎 הוסף</label>' +
-    '<input type="file" id="prod-pkg-fi" class="file-input-hidden" multiple />' : '') +
+    '<label class="btn-upload-file" for="prod-pkg-fi">📎 הוסף</label>' +
+    '<input type="file" id="prod-pkg-fi" class="file-input-hidden" multiple />' +
     '</div>' +
     '<div class="project-files-list" id="prod-pkg-files">' +
     (hasFld ? '<p class="text-muted text-sm">טוען...</p>' : '<p class="text-muted text-sm">אין קבצים</p>') +
@@ -2838,20 +2841,18 @@ function renderProductPanel(prod) {
   const nameEl = panel.querySelector('#prod-name-edit');
   if (nameEl) nameEl.addEventListener('blur', saveProductPanel);
 
-  if (hasFld) {
-    _loadProdFiles(prod, 'std');
-    _loadProdFiles(prod, 'pkg');
-    const sfi = panel.querySelector('#prod-std-fi');
-    if (sfi) sfi.addEventListener('change', async e => {
-      for (const f of [...e.target.files]) await _uploadProdFile(prod, f, 'std');
-      e.target.value = '';
-    });
-    const pfi = panel.querySelector('#prod-pkg-fi');
-    if (pfi) pfi.addEventListener('change', async e => {
-      for (const f of [...e.target.files]) await _uploadProdFile(prod, f, 'pkg');
-      e.target.value = '';
-    });
-  }
+  _loadProdFiles(prod, 'std');
+  _loadProdFiles(prod, 'pkg');
+  const sfi = panel.querySelector('#prod-std-fi');
+  if (sfi) sfi.addEventListener('change', async e => {
+    for (const f of [...e.target.files]) await _uploadProdFile(prod, f, 'std');
+    e.target.value = '';
+  });
+  const pfi = panel.querySelector('#prod-pkg-fi');
+  if (pfi) pfi.addEventListener('change', async e => {
+    for (const f of [...e.target.files]) await _uploadProdFile(prod, f, 'pkg');
+    e.target.value = '';
+  });
 }
 
 async function _loadProdFiles(prod, type) {
@@ -2983,7 +2984,7 @@ async function submitAddProduct() {
 (function injectProductDom() {
   if (!document.getElementById('product-panel')) {
     const el = document.createElement('div');
-    el.className = 'side-panel'; el.id = 'product-panel';
+    el.className = 'center-panel'; el.id = 'product-panel';
     document.body.appendChild(el);
   }
   if (!document.getElementById('add-product-modal')) {
