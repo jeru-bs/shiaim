@@ -185,7 +185,33 @@
 
 <!-- ============================================================
      PROJECT DETAIL PANEL
-     ============================================================ -->
+     ============================================/div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">סיסמה נוכחית</label>
+        <input type="password" id="cp-current" class="form-input" placeholder="הסיסמה הנוכחית" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">סיסמה חדשה</label>
+        <input type="password" id="cp-new" class="form-input" placeholder="לפחות 4 תווים" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">אימות סיסמה</label>
+        <input type="password" id="cp-confirm" class="form-input" placeholder="חזור על הסיסמה החדשה" />
+      </div>
+      <div id="cp-error" class="login-error"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-submit-change-password" class="btn-primary">עדכן סיסמה</button>
+      <button class="btn-secondary btn-modal-close">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js?v=24"></script>
+</body>
+</html>
+================ -->
 <div id="project-panel" class="center-panel">
   <div class="panel-header">
     <button class="btn-panel-close">✕</button>
@@ -216,7 +242,7 @@
 <!-- ============================================================
      MANUFACTURER DETAIL PANEL
      ============================================================ -->
-<div id="manufacturer-panel" class="side-panel"></div>
+<div id="manufacturer-panel" class="center-panel"></div>
 
 <!-- ============================================================
      CHANGE FEED PANEL
@@ -418,6 +444,6 @@
   </div>
 </div>
 
-<script src="app.js?v=23"></script>
+<script src="app.js?v=24"></script>
 </body>
 </html>
