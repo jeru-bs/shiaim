@@ -1,5 +1,4 @@
 const CACHE_NAME = 'shiaim-v25';
-const CACHE_NAME = 'shiaim-v24';
 const ASSETS = [
   './index.html',
   './app.css',
@@ -24,7 +23,6 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network-first for API calls (Google Apps Script)
   if (e.request.url.includes('script.google.com')) {
     e.respondWith(
       fetch(e.request).catch(() => new Response(JSON.stringify({ error: 'offline' }), {
@@ -33,8 +31,6 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-
-  // Cache-first for app assets
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
