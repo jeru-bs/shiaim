@@ -2550,17 +2550,19 @@ document.addEventListener('DOMContentLoaded', init);
 })();
 
 // Fix: prevent browser autocomplete from filling search with username
+// readonly prevents Chrome autofill entirely; removed on first user interaction
 (function() {
   const fs = document.getElementById('filter-search');
   if (!fs) return;
-  fs.setAttribute('autocomplete', 'new-password');
+  fs.setAttribute('readonly', '');
   fs.value = '';
-  // Chrome autofills async after page load — clear repeatedly for 1.5s
-  let n = 0;
-  const iv = setInterval(function() {
-    if (fs.value && !S.filters.search) fs.value = '';
-    if (++n >= 15) clearInterval(iv);
-  }, 100);
+  function unlock() {
+    fs.removeAttribute('readonly');
+    fs.removeEventListener('focus', unlock);
+    fs.removeEventListener('click', unlock);
+  }
+  fs.addEventListener('focus', unlock);
+  fs.addEventListener('click', unlock);
 })();
 
 
