@@ -447,3 +447,452 @@
 <script src="app.js?v=25"></script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1B2B5E">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="שיאים">
+  <title>התנהלות שוטפת — שיאים</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="app.css?v=12">
+</head>
+<body>
+
+<!-- ============================================================
+     SPINNER
+     ============================================================ -->
+<div id="spinner" class="spinner-overlay hidden">
+  <div class="spinner"></div>
+</div>
+
+<!-- ============================================================
+     TOAST CONTAINER
+     ============================================================ -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ============================================================
+     OVERLAY (closes panels on click)
+     ============================================================ -->
+<div id="overlay" class="overlay hidden"></div>
+
+<!-- ============================================================
+     LOGIN SCREEN
+     ============================================================ -->
+<div id="login-screen" class="screen">
+  <div class="login-card">
+
+    <div class="login-emblem">
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 4L35 12V28L20 36L5 28V12L20 4Z" stroke="#C9A84C" stroke-width="2" fill="rgba(201,168,76,0.1)"/>
+        <text x="20" y="25" text-anchor="middle" font-size="14" font-weight="bold" fill="#C9A84C" font-family="Arial Hebrew, Arial">ש</text>
+      </svg>
+    </div>
+
+    <div class="login-title">התנהלות שוטפת</div>
+    <div class="login-subtitle">שיאים</div>
+
+    <form class="login-form" id="login-form" autocomplete="off">
+      <div class="input-group">
+        <input type="text" id="username" placeholder="שם משתמש" autocomplete="username" />
+      </div>
+      <div class="input-group">
+        <input type="password" id="password" placeholder="סיסמה" autocomplete="current-password" />
+      </div>
+      <div id="login-error" class="login-error"></div>
+      <button type="submit" class="btn-login">כניסה</button>
+    </form>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     MAIN APP
+     ============================================================ -->
+<div id="app" class="screen hidden" style="display:flex;flex-direction:column;min-height:100vh;">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="header-logo"><span>ש</span></div>
+      <span class="app-title">התנהלות שוטפת — <span>שיאים</span></span>
+    </div>
+    <div class="header-actions">
+      <button id="btn-open-setup" class="btn-header" title="הגדרות API" style="font-size:1.1rem;">⚙️</button>
+      <button id="settings-btn" class="btn-header hidden" title="ניהול סטטוסים">סטטוסים</button>
+      <button id="changes-btn" class="changes-btn" title="שינויים">
+        🔔
+        <span id="changes-badge" class="changes-badge hidden">0</span>
+      </button>
+      <span id="user-display" class="user-chip">
+        <span class="role-dot"></span>
+        <span>—</span>
+      </span>
+      <button id="change-password-btn" class="btn-header" title="שינוי סיסמה">🔑</button>
+      <button id="logout-btn" class="btn-header">יציאה</button>
+    </div>
+  </header>
+
+  <!-- View Toggle + Section Label -->
+  <div id="section-header-bar" style="background:var(--surface);border-bottom:1px solid var(--border);padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+    <div class="section-header" style="padding:0;flex:1;margin:0;">
+      <span id="section-label" class="section-label">פרויקטים פעילים</span>
+      <span id="section-count" class="section-count">0 פרויקטים</span>
+    </div>
+    <button id="view-toggle" class="btn-view-toggle">הסתיימו</button>
+  </div>
+
+  <!-- Filters -->
+  <div id="filters-bar" class="filters-bar">
+    <input type="search" id="filter-search" class="filter-search" placeholder="🔍 חיפוש..." />
+    <select id="filter-type" class="filter-select">
+      <option value="">כל הסוגים</option>
+      <option value="client">לקוחות</option>
+      <option value="office">משרד</option>
+    </select>
+    <select id="filter-status" class="filter-select">
+      <option value="">כל הסטטוסים</option>
+    </select>
+    <select id="filter-priority" class="filter-select">
+      <option value="">כל הדחיפויות</option>
+      <option value="5">★★★★★ דחוף מאוד</option>
+      <option value="4">★★★★☆ דחוף</option>
+      <option value="3">★★★☆☆ בינוני</option>
+      <option value="2">★★☆☆☆ נמוך</option>
+      <option value="1">★☆☆☆☆ מינימלי</option>
+    </select>
+    <select id="filter-client" class="filter-select">
+      <option value="">כל הלקוחות</option>
+    </select>
+    <select id="filter-deadline" class="filter-select">
+      <option value="">כל הדדליינים</option>
+      <option value="overdue">⚠️ עבר</option>
+      <option value="soon">⏰ השבוע</option>
+      <option value="none">ללא דדליין</option>
+    </select>
+    <button id="clear-filters" class="btn-clear-filters">נקה</button>
+  </div>
+
+  <!-- Wing Navigation Tiles -->
+  <div id="wing-tiles" class="wing-tiles">
+    <button class="wing-tile" onclick="openWing('ideas')">
+      <span class="wing-tile-icon">💡</span>
+      <span class="wing-tile-label">רעיונות</span>
+    </button>
+    <button class="wing-tile" onclick="openWing('products')">
+      <span class="wing-tile-icon">📦</span>
+      <span class="wing-tile-label">מוצרים וספקים</span>
+    </button>
+    <button class="wing-tile" onclick="openWing('clients')">
+      <span class="wing-tile-icon">👤</span>
+      <span class="wing-tile-label">לקוחות</span>
+    </button>
+  </div>
+
+  <!-- Project List -->
+  <main id="project-list" class="project-list"></main>
+
+  <!-- Wing Content (replaces project list when active) -->
+  <div id="wing-content" class="wing-content hidden"></div>
+
+  <!-- FAB -->
+  <button id="add-btn" class="fab" title="פרויקט חדש">+</button>
+
+</div><!-- /#app -->
+
+<!-- ============================================================
+     CLIENT DETAIL PANEL
+     ============================================================ -->
+<div id="client-panel" class="center-panel">
+  <div class="panel-header">
+    <button class="btn-panel-close">✕</button>
+    <div class="panel-title">לקוח</div>
+  </div>
+  <div class="panel-body"></div>
+  <div class="panel-footer">
+    <button id="btn-delete-client" class="btn-danger">🗑 מחק לקוח</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     IDEA DETAIL PANEL
+     ============================================================ -->
+<div id="idea-panel" class="center-panel">
+  <div class="panel-header">
+    <button class="btn-panel-close">✕</button>
+    <div class="panel-title">רעיון</div>
+  </div>
+  <div class="panel-body"></div>
+  <div class="panel-footer">
+    <button id="btn-convert-idea" class="btn-gold">🚀 הפוך לפרויקט פעיל</button>
+    <button id="btn-delete-idea" class="btn-danger">🗑 מחק רעיון</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     PROJECT DETAIL PANEL
+     ============================================/div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">סיסמה נוכחית</label>
+        <input type="password" id="cp-current" class="form-input" placeholder="הסיסמה הנוכחית" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">סיסמה חדשה</label>
+        <input type="password" id="cp-new" class="form-input" placeholder="לפחות 4 תווים" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">אימות סיסמה</label>
+        <input type="password" id="cp-confirm" class="form-input" placeholder="חזור על הסיסמה החדשה" />
+      </div>
+      <div id="cp-error" class="login-error"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-submit-change-password" class="btn-primary">עדכן סיסמה</button>
+      <button class="btn-secondary btn-modal-close">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js?v=25"></script>
+</body>
+</html>
+================ -->
+<div id="project-panel" class="center-panel">
+  <div class="panel-header">
+    <button class="btn-panel-close">✕</button>
+    <div class="panel-title">פרויקט</div>
+  </div>
+  <div class="panel-body"></div>
+  <div class="panel-footer">
+    <button id="btn-complete-project" class="btn-gold">✅ סיים פרויקט</button>
+    <button id="btn-restore-project"  class="btn-secondary hidden">↩ החזר לפעילים</button>
+    <button id="btn-delete-project"   class="btn-danger">🗑 מחק</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     DESIGN DETAIL PANEL
+     ============================================================ -->
+<div id="design-panel" class="center-panel design-panel-modal" style="z-index:510;">
+  <div class="panel-header">
+    <button class="btn-panel-close">✕</button>
+    <div class="panel-title">עיצוב</div>
+  </div>
+  <div class="panel-body"></div>
+  <div class="panel-footer">
+    <button class="btn-danger" onclick="deleteDesign()">🗑 מחק עיצוב</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     MANUFACTURER DETAIL PANEL
+     ============================================================ -->
+<div id="manufacturer-panel" class="center-panel"></div>
+
+<!-- ============================================================
+     CHANGE FEED PANEL
+     ============================================================ -->
+<div id="changes-panel" class="side-panel changes-panel">
+  <div class="panel-header">
+    <button class="btn-panel-close">✕</button>
+    <div class="panel-title">יומן שינויים</div>
+  </div>
+  <div class="changes-subheader">טוען...</div>
+  <div class="panel-body">
+    <div class="changes-list"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     ADD PROJECT MODAL
+     ============================================================ -->
+<div id="add-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">פרויקט חדש</span>
+      <button class="btn-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">שם פרויקט *</label>
+        <input type="text" id="add-project-name" class="form-input" placeholder="שם הפרויקט" autocomplete="organization" />
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">לקוח</label>
+          <input type="text" id="add-project-client" class="form-input" placeholder="שם הלקוח" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">סוג פרויקט</label>
+          <select id="add-project-type" class="form-select">
+            <option value="client">פרויקט לקוח</option>
+            <option value="office">פרויקט משרד</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">סטטוס</label>
+          <select id="add-project-status" class="form-select"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">דדליין</label>
+          <input type="date" id="add-project-deadline" class="form-input" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-submit-add" class="btn-primary">הוסף פרויקט</button>
+      <button class="btn-secondary btn-modal-close">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     ADD MANUFACTURER MODAL
+     ============================================================ -->
+<div id="add-manufacturer-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">יצרן חדש</span>
+      <button class="btn-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">שם המפעל *</label>
+        <input type="text" id="add-mfr-name" class="form-input" placeholder="שם היצרן / מפעל" autocomplete="off" />
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">איש קשר</label>
+          <input type="text" id="add-mfr-person" class="form-input" placeholder="שם איש קשר" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">טלפון</label>
+          <input type="text" id="add-mfr-phone" class="form-input" placeholder="מספר טלפון" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">אימייל</label>
+          <input type="email" id="add-mfr-email" class="form-input" placeholder="כתובת אימייל" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">כתובת</label>
+          <input type="text" id="add-mfr-address" class="form-input" placeholder="כתובת מפעל" autocomplete="off" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">הערות</label>
+        <textarea id="add-mfr-notes" class="form-input" rows="3" placeholder="הערות נוספות..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-submit-add-manufacturer" class="btn-gold">הוסף יצרן</button>
+      <button class="btn-secondary btn-modal-close">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     CONFIRM DELETE MODAL
+     ============================================================ -->
+<div id="confirm-modal" class="modal-backdrop hidden">
+  <div class="modal-box" style="max-width:340px;">
+    <div class="modal-header">
+      <span id="confirm-modal-title" class="modal-title">אישור</span>
+      <button class="btn-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-message" class="confirm-message"></p>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-confirm-action" class="btn-danger">אישור</button>
+      <button class="btn-secondary btn-modal-close">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     STATUSES MODAL (boss only)
+     ============================================================ -->
+<div id="statuses-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">ניהול סטטוסים</span>
+      <button class="btn-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="statuses-edit-list" class="statuses-list"></div>
+      <button id="btn-add-status" class="btn-add-status">+ הוסף סטטוס</button>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-save-statuses" class="btn-primary">שמור</button>
+      <button class="btn-secondary btn-modal-close">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SETUP / API URL MODAL
+     ============================================================ -->
+<div id="setup-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">הגדרת חיבור Google Sheets</span>
+      <button class="btn-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="setup-info">
+        הדבק כאן את כתובת ה-Web App של Google Apps Script.<br>
+        תקבל אותה לאחר שתפרסם את הסקריפט (Deploy → New Deployment → Web App).
+      </div>
+      <div class="form-group" style="margin-top:1rem;">
+        <label class="form-label">כתובת Apps Script</label>
+        <input type="url" id="setup-url-input" class="setup-url-input form-input"
+               placeholder="https://script.google.com/macros/s/..." />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-save-setup" class="btn-primary">שמור וטען</button>
+      <button class="btn-secondary btn-modal-close">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     CHANGE PASSWORD MODAL
+     ============================================================ -->
+<div id="change-password-modal" class="modal-backdrop hidden">
+  <div class="modal-box" style="max-width:360px;">
+    <div class="modal-header">
+      <span class="modal-title">שינוי סיסמה</span>
+      <button class="btn-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">סיסמה נוכחית</label>
+        <input type="password" id="cp-current" class="form-input" placeholder="הסיסמה הנוכחית" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">סיסמה חדשה</label>
+        <input type="password" id="cp-new" class="form-input" placeholder="לפחות 4 תווים" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">אימות סיסמה</label>
+        <input type="password" id="cp-confirm" class="form-input" placeholder="חזור על הסיסמה החדשה" />
+      </div>
+      <div id="cp-error" class="login-error"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-submit-change-password" class="btn-primary">עדכן סיסמה</button>
+      <button class="btn-secondary btn-modal-close">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js?v=25"></script>
+</body>
+</html>
