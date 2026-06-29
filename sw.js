@@ -1,8 +1,8 @@
-const CACHE_NAME = 'shiaim-v25';
+const CACHE_NAME = 'shiaim-v26';
 const ASSETS = [
   './index.html',
   './app.css',
-  './app.js',
+  './app.js?v=25',
   './manifest.json'
 ];
 
