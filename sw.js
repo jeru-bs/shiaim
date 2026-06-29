@@ -1,3 +1,4 @@
+// v31
 const CACHE_NAME = 'shiaim-v31';
 const GOOD_HTML = 'https://raw.githubusercontent.com/jeru-bs/shiaim/fc784d211c2804714f80be959b4d8527c891087d/index.html';
 
