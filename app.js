@@ -69,6 +69,7 @@ const S = {
   ideas:                [],
   clients:              [],
   manufacturers:        [],
+  products:             [],
 };
 
 // ================================================================
@@ -2210,10 +2211,13 @@ function renderManufacturerPanel(mfr) {
   const panel = document.getElementById('manufacturer-panel');
   if (!panel) return;
 
+  const productOptions = S.products.map(p => `<option value="${escHtml(p.name)}">`).join('');
+
   const priceRows = (mfr.priceTable || []).map(row => `
     <tr>
-      <td><input type="text" class="form-input price-qty" value="${escHtml(row.qty)}" placeholder="כמות" /></td>
-      <td><input type="text" class="form-input price-val" value="${escHtml(row.price)}" placeholder="מחיר ₪" /></td>
+      <td><input type="text" class="form-input price-product" list="products-datalist" value="${escHtml(row.product || '')}" placeholder="שם מוצר" /></td>
+      <td><input type="text" class="form-input price-qty" value="${escHtml(row.qty || '')}" placeholder="כמות" /></td>
+      <td><input type="text" class="form-input price-val" value="${escHtml(row.price || '')}" placeholder="מחיר ₪" /></td>
       <td><button class="btn-icon-sm" onclick="removePriceRow(this)" title="מחק">✕</button></td>
     </tr>`).join('');
 
@@ -2262,8 +2266,9 @@ function renderManufacturerPanel(mfr) {
           <span>טבלת מחירים</span>
           <button class="btn-sm btn-outline" onclick="addPriceRow()">+ שורה</button>
         </div>
+        <datalist id="products-datalist">${productOptions}</datalist>
         <table class="price-table">
-          <thead><tr><th>כמות</th><th>מחיר ₪</th><th></th></tr></thead>
+          <thead><tr><th>מוצר</th><th>כמות</th><th>מחיר ₪</th><th></th></tr></thead>
           <tbody id="price-tbody">${priceRows}</tbody>
         </table>
       </div>
@@ -2304,6 +2309,7 @@ function addPriceRow() {
   if (!tbody) return;
   const tr = document.createElement('tr');
   tr.innerHTML = `
+    <td><input type="text" class="form-input price-product" list="products-datalist" placeholder="שם מוצר" /></td>
     <td><input type="text" class="form-input price-qty" placeholder="כמות" /></td>
     <td><input type="text" class="form-input price-val" placeholder="מחיר ₪" /></td>
     <td><button class="btn-icon-sm" onclick="removePriceRow(this)" title="מחק">✕</button></td>`;
@@ -2316,9 +2322,10 @@ function removePriceRow(btn) {
 
 function collectPriceTable() {
   return [...document.querySelectorAll('#price-tbody tr')].map(tr => ({
-    qty:   tr.querySelector('.price-qty')?.value.trim() || '',
-    price: tr.querySelector('.price-val')?.value.trim() || ''
-  })).filter(r => r.qty || r.price);
+    product: tr.querySelector('.price-product')?.value.trim() || '',
+    qty:     tr.querySelector('.price-qty')?.value.trim()     || '',
+    price:   tr.querySelector('.price-val')?.value.trim()     || ''
+  })).filter(r => r.product || r.qty || r.price);
 }
 
 // ── Manufacturer documents ─────────────────────────────────────────────────
