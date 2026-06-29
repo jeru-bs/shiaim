@@ -2202,10 +2202,8 @@ function openManufacturerPanel(id) {
   S.panelManufacturerId = id;
   const mfr = S.manufacturers.find(m => m.id === id);
   if (!mfr) return;
-  const panel = document.getElementById('manufacturer-panel');
-  if (!panel) return;
-  panel.classList.remove('hidden');
   renderManufacturerPanel(mfr);
+  openPanel('manufacturer-panel');
 }
 
 function renderManufacturerPanel(mfr) {
