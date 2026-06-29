@@ -2508,3 +2508,40 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+
+// ================================================================
+// AUTO-INJECT: add-idea-modal (missing from index.html)
+// ================================================================
+(function() {
+  if (document.getElementById('add-idea-modal')) return;
+  const el = document.createElement('div');
+  el.id = 'add-idea-modal';
+  el.className = 'modal-backdrop hidden';
+  el.innerHTML =
+    '<div class="modal-box">' +
+    '<div class="modal-header">' +
+    '<span class="modal-title">רעיון חדש</span>' +
+    '<button class="btn-modal-close">✕</button>' +
+    '</div>' +
+    '<div class="modal-body">' +
+    '<div class="form-group">' +
+    '<label class="form-label">שם הרעיון *</label>' +
+    '<input type="text" id="add-idea-name" class="form-input" placeholder="שם הרעיון" />' +
+    '</div>' +
+    '<div class="form-group">' +
+    '<label class="form-label">תיאור</label>' +
+    '<textarea id="add-idea-description" class="form-input" rows="3" placeholder="תיאור הרעיון"></textarea>' +
+    '</div>' +
+    '<div class="form-group">' +
+    '<label class="form-label">שלב</label>' +
+    '<input type="text" id="add-idea-stage" class="form-input" placeholder="למשל: ראשוני, בפיתוח..." />' +
+    '</div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button onclick="submitAddIdea()" class="btn-primary">הוסף רעיון</button>' +
+    '<button class="btn-secondary btn-modal-close">ביטול</button>' +
+    '</div>' +
+    '</div>';
+  document.body.appendChild(el);
+})();
