@@ -1,17 +1,17 @@
-const CACHE_NAME = 'shiaim-v30';
-const GOOD_HTML = 'https://raw.githubusercontent.com/jeru-bs/shiaim/df203b34/index.html';
+const CACHE_NAME = 'shiaim-v31';
+const GOOD_HTML = 'https://raw.githubusercontent.com/jeru-bs/shiaim/fc784d211c2804714f80be959b4d8527c891087d/index.html';
 
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(async cache => {
       const htmlResp = await fetch(GOOD_HTML);
       let html = await htmlResp.text();
-      html = html.replace(/app\.js\?v=\d+/g, 'app.js?v=27');
+      html = html.replace(/app\.js\?v=\d+/g, 'app.js?v=28');
       const r1 = new Response(html, {headers: {'Content-Type': 'text/html; charset=utf-8'}});
       const r2 = new Response(html, {headers: {'Content-Type': 'text/html; charset=utf-8'}});
       await cache.put(new Request('./index.html'), r1);
       await cache.put(new Request('./'), r2);
-      await cache.addAll(['./app.css', './app.js?v=27', './manifest.json']);
+      await cache.addAll(['./app.css', './app.js?v=28', './manifest.json']);
     })
   );
   self.skipWaiting();
