@@ -652,10 +652,12 @@ function renderProjectPanel(p) {
 
   const tabsHtml = `
     <div class="panel-tabs">
+      <button class="panel-tab-btn${S.panelTab === 'overview' ? ' active' : ''}" data-tab="overview">סקירה</button>
       <button class="panel-tab-btn${S.panelTab === 'details' ? ' active' : ''}" data-tab="details">פרטים</button>
       <button class="panel-tab-btn${S.panelTab === 'designs' ? ' active' : ''}" data-tab="designs">
         עיצובים${designsCount > 0 ? ` <span class="panel-tab-count">${designsCount}</span>` : ''}
       </button>
+      <button class="panel-tab-btn${S.panelTab === 'files' ? ' active' : ''}" data-tab="files">קבצים</button>
       <button class="panel-tab-btn${S.panelTab === 'notes' ? ' active' : ''}" data-tab="notes">
         הערות${notesCount > 0 ? ` <span class="panel-tab-count">${notesCount}</span>` : ''}
       </button>
@@ -663,7 +665,9 @@ function renderProjectPanel(p) {
 
   let tabContent = '';
 
-  if (S.panelTab === 'details') {
+  if (S.panelTab === 'overview') {
+    tabContent = `<div class="panel-section"><div class="empty-state">סקירת הפרויקט תופיע כאן</div></div>`;
+  } else if (S.panelTab === 'details') {
     tabContent = `
       <div class="panel-section">
         <div class="field-grid">
@@ -732,6 +736,8 @@ function renderProjectPanel(p) {
           ${p.folderId ? '<p class="text-muted text-sm">טוען קבצים…</p>' : ''}
         </div>
       </div>`;
+  } else if (S.panelTab === 'files') {
+    tabContent = `<div class="panel-section"><div class="empty-state">קבצי הפרויקט יופיעו כאן</div></div>`;
   } else if (S.panelTab === 'notes') {
     tabContent = `
       <div class="panel-section">
