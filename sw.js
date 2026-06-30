@@ -1,5 +1,5 @@
 // v31
-const CACHE_NAME = 'shiaim-v37';
+const CACHE_NAME = 'shiaim-v38';
 const GOOD_HTML = 'https://raw.githubusercontent.com/jeru-bs/shiaim/fc784d211c2804714f80be959b4d8527c891087d/index.html';
 
 self.addEventListener('install', e => {
