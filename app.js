@@ -9,6 +9,12 @@
 // CONFIGURATION
 // ================================================================
 
+// Returns true if the given username has role='boss' in CONFIG.
+// Use this instead of hardcoding usernames.
+function isBossUser(username) {
+  return CONFIG.USERS[username]?.role === 'boss';
+}
+
 // Default passwords — used only on first launch.
 // After that, passwords are stored in localStorage and changeable from the app.
 const DEFAULT_PASSWORDS = {
@@ -155,7 +161,9 @@ async function loadAll() {
     S.projects = pRes.projects || [];
     S.statuses  = sRes.statuses || CONFIG.DEFAULT_STATUSES;
     S.changes   = cRes.changes  || [];
-    S.lastSeen  = lsRes.lastSeen || null;
+    // Use GAS lastSeen, falling back to localStorage (set when user views the changes panel)
+    S.lastSeen  = lsRes.lastSeen ||
+      localStorage.getItem('shiaim_lastseen_' + S.user.username) || null;
 
     // Count new changes since last login
     if (S.lastSeen) {
@@ -168,8 +176,9 @@ async function loadAll() {
       S.newCount = 0;
     }
 
-    // Update last seen
-    await apiCall('updateLastSeen', { user: S.user.username, ts: new Date().toISOString() });
+    // Load products in background — needed for manufacturer price-table autocomplete.
+    // Non-blocking: failure does not affect main data load.
+    apiCall('getProducts').then(r => { S.products = r.products || []; }).catch(() => {});
 
     renderAll();
   } catch (e) {
@@ -341,13 +350,6 @@ function restoreSession() {
 // ================================================================
 // RENDER — Main List
 // ================================================================
-function renderAll() {
-  renderHeader();
-  renderProjectList();
-  updateChangesBadge();
-  updateFilterDropdowns();
-  saveToCache();
-}
 
 function renderHeader() {
   const el = document.getElementById('user-display');
@@ -580,14 +582,20 @@ async function uploadProjectFile(project, file) {
 }
 
 async function deleteProjectFile(fileId, btn) {
-  if (!confirm('למחוק את הקובץ מ-Drive?')) return;
-  try {
-    await apiCall('deleteFile', { fileId });
-    btn.closest('.project-file-item').remove();
-    toast('קובץ נמחק', 'success');
-  } catch (e) {
-    toast('שגיאה במחיקה: ' + e.message, 'error');
-  }
+  openConfirmModal({
+    title: 'מחיקת קובץ',
+    message: 'למחוק את הקובץ מ-Drive? פעולה זו בלתי הפיכה.',
+    btnLabel: 'מחק', btnClass: 'btn-danger',
+    action: async () => {
+      try {
+        await apiCall('deleteFile', { fileId });
+        btn.closest('.project-file-item').remove();
+        toast('קובץ נמחק', 'success');
+      } catch (e) {
+        toast('שגיאה במחיקה: ' + e.message, 'error');
+      }
+    }
+  });
 }
 
 // ================================================================
@@ -1253,61 +1261,7 @@ function openCompleteConfirm(id) {
 // ================================================================
 // CHANGE FEED PANEL
 // ================================================================
-function openChangesPanel() {
-  renderChangesPanel();
-  openPanel('changes-panel');
-  // Reset badge
-  S.newCount = 0;
-  updateChangesBadge();
-}
-
-function renderChangesPanel() {
-  const body  = document.getElementById('changes-panel').querySelector('.panel-body');
-  const panel = document.getElementById('changes-panel');
-
-  const newChanges = S.lastSeen
-    ? S.changes.filter(c => c.user !== S.user.username && new Date(c.timestamp) > new Date(S.lastSeen))
-    : [];
-
-  panel.querySelector('.changes-subheader').textContent =
-    newChanges.length > 0 ? `${newChanges.length} שינויים חדשים מאז הכניסה האחרונה` : 'אין שינויים חדשים';
-
-  if (S.changes.length === 0) {
-    body.querySelector('.changes-list').innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">📋</div>
-        <p>אין שינויים עדיין</p>
-      </div>`;
-    return;
-  }
-
-  const newSet = new Set(newChanges.map(c => c.id));
-
-  const icons = {
-    status:    { cls: 'status',   icon: '🔄' },
-    note:      { cls: 'note',     icon: '💬' },
-    info:      { cls: 'info',     icon: 'ℹ️' },
-    priority:  { cls: 'priority', icon: '⭐' },
-    created:   { cls: 'created',  icon: '✨' },
-    deleted:   { cls: 'deleted',  icon: '🗑️' },
-    completed: { cls: 'completed',icon: '✅' },
-    field:     { cls: 'field',    icon: '✏️' },
-  };
-
-  body.querySelector('.changes-list').innerHTML = S.changes.slice(0, 100).map(c => {
-    const ic = icons[c.changeType] || icons.field;
-    const user = CONFIG.USERS[c.user]?.displayName || c.user;
-    return `
-      <div class="change-item ${newSet.has(c.id) ? 'is-new' : ''}">
-        <div class="change-icon ${ic.cls}">${ic.icon}</div>
-        <div class="change-body">
-          <div class="change-project">${escHtml(c.projectName)}</div>
-          <div class="change-details">${escHtml(c.details)} — <strong>${escHtml(user)}</strong></div>
-          <div class="change-time">${fmt.relativeTime(c.timestamp)}</div>
-        </div>
-      </div>`;
-  }).join('');
-}
+// openChangesPanel — defined below alongside _renderNotifPanel
 
 // ================================================================
 // STATUSES MODAL
@@ -2055,14 +2009,20 @@ async function uploadIdeaFile(idea, file) {
 }
 
 async function deleteIdeaFile(fileId, btn) {
-  if (!confirm('למחוק את הקובץ מ-Drive?')) return;
-  try {
-    await apiCall('deleteFile', { fileId });
-    btn.closest('.project-file-item').remove();
-    toast('קובץ נמחק', 'success');
-  } catch(e) {
-    toast('שגיאה במחיקה: ' + e.message, 'error');
-  }
+  openConfirmModal({
+    title: 'מחיקת קובץ',
+    message: 'למחוק את הקובץ מ-Drive? פעולה זו בלתי הפיכה.',
+    btnLabel: 'מחק', btnClass: 'btn-danger',
+    action: async () => {
+      try {
+        await apiCall('deleteFile', { fileId });
+        btn.closest('.project-file-item').remove();
+        toast('קובץ נמחק', 'success');
+      } catch(e) {
+        toast('שגיאה במחיקה: ' + e.message, 'error');
+      }
+    }
+  });
 }
 
 async function convertIdeaToProject() {
@@ -2107,58 +2067,12 @@ async function submitAddIdea() {
   }
 }
 
-// ================================================================
-// PRODUCTS WING
-// ================================================================
-function renderProductsWing() {
-  const wc  = document.getElementById('wing-content');
-  const sub = S.productsSubTab;
-
-  if (!sub) {
-    wc.innerHTML = `
-      <div class="wing-header">
-        <button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>
-        <h2 class="wing-title">📦 מוצרים וספקים</h2>
-      </div>
-      <div class="wing-tiles">
-        <button class="wing-tile" onclick="switchProductsTab('manufacturers')">
-          <span class="wing-tile-icon">🏭</span>
-          <span class="wing-tile-label">יצרנים</span>
-        </button>
-        <button class="wing-tile" onclick="switchProductsTab('products')">
-          <span class="wing-tile-icon">📦</span>
-          <span class="wing-tile-label">מוצרים</span>
-        </button>
-      </div>`;
-    return;
-  }
-
-  if (sub === 'manufacturers') {
-    wc.innerHTML = `
-      <div class="wing-header">
-        <button class="btn-wing-back" onclick="switchProductsTab(null)">← חזרה</button>
-        <h2 class="wing-title">🏭 יצרנים</h2>
-        <button class="btn-gold btn-sm" onclick="openAddManufacturerModal()">+ יצרן</button>
-      </div>
-      <div id="manufacturers-list-container"></div>`;
-    loadManufacturers();
-    return;
-  }
-
-  wc.innerHTML = `
-    <div class="wing-header">
-      <button class="btn-wing-back" onclick="switchProductsTab(null)">← חזרה</button>
-      <h2 class="wing-title">📦 מוצרים</h2>
-    </div>
-    <div class="empty-state" style="padding:3rem 1rem;">
-      <div class="empty-icon">🚧</div><p>בפיתוח — בקרוב</p>
-    </div>`;
-}
-
 function switchProductsTab(tab) {
   S.productsSubTab = tab;
   renderProductsWing();
 }
+
+// renderProductsWing — defined below (full implementation)
 
 // ================================================================
 // MANUFACTURERS TAB
@@ -2365,6 +2279,8 @@ async function loadManufacturerFiles(mfr) {
 }
 
 async function uploadManufacturerFile(mfr, file) {
+  const MAX = 20 * 1024 * 1024;
+  if (file.size > MAX) { toast(`${file.name} — גדול מ-20MB`, 'error'); return; }
   toast(`מעלה: ${file.name}…`, 'info');
   try {
     const base64 = await fileToBase64(file);
@@ -2382,14 +2298,20 @@ async function uploadManufacturerFile(mfr, file) {
 }
 
 async function deleteMfrFile(fileId, btn) {
-  if (!confirm('למחוק את הקובץ מ-Drive?')) return;
-  try {
-    await apiCall('deleteFile', { fileId });
-    btn.closest('.project-file-item').remove();
-    toast('קובץ נמחק', 'success');
-  } catch(e) {
-    toast('שגיאה: ' + e.message, 'error');
-  }
+  openConfirmModal({
+    title: 'מחיקת קובץ',
+    message: 'למחוק את הקובץ מ-Drive? פעולה זו בלתי הפיכה.',
+    btnLabel: 'מחק', btnClass: 'btn-danger',
+    action: async () => {
+      try {
+        await apiCall('deleteFile', { fileId });
+        btn.closest('.project-file-item').remove();
+        toast('קובץ נמחק', 'success');
+      } catch(e) {
+        toast('שגיאה: ' + e.message, 'error');
+      }
+    }
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2564,7 +2486,7 @@ function computeNotifications() {
   );
   S.notifs = {
     newProjects:       others.filter(c => c.changeType === 'created'),
-    bossPriorities:    others.filter(c => c.changeType === 'priority' && c.user === 'yakov'),
+    bossPriorities:    others.filter(c => c.changeType === 'priority' && isBossUser(c.user)),
     projectChanges:    others.filter(c => ['note','status','field','file'].includes(c.changeType)),
     upcomingDeadlines: S.projects.filter(p => {
       if (p.completed || !p.deadline) return false;
@@ -2590,8 +2512,14 @@ function renderAll() {
 function openChangesPanel() {
   _renderNotifPanel();
   openPanel('changes-panel');
+  // Mark all current notifications as seen
+  const now = new Date().toISOString();
+  S.lastSeen = now;
   S.newCount = 0;
   updateChangesBadge();
+  // Persist lastSeen so the badge stays at 0 after refresh
+  try { localStorage.setItem('shiaim_lastseen_' + S.user.username, now); } catch {}
+  apiCall('updateLastSeen', { user: S.user.username, ts: now }).catch(() => {});
 }
 
 function _renderNotifPanel() {
@@ -2857,6 +2785,8 @@ async function _loadProdFiles(prod, type) {
 }
 
 async function _uploadProdFile(prod, file, type) {
+  const MAX = 20 * 1024 * 1024;
+  if (file.size > MAX) { toast(file.name + ' — גדול מ-20MB', 'error'); return; }
   toast('מעלה: ' + file.name + '...', 'info');
   try {
     const b64 = await fileToBase64(file);
@@ -2876,14 +2806,20 @@ async function _uploadProdFile(prod, file, type) {
 }
 
 async function deleteProdFile(fileId, prodId, type, btn) {
-  if (!confirm('למחוק את הקובץ מ-Drive? פעולה זו בלתי הפיכה.')) return;
-  try {
-    await apiCall('deleteFile', { fileId });
-    btn.closest('.project-file-item').remove();
-    toast('קובץ נמחק', 'success');
-  } catch(e) {
-    toast('שגיאה במחיקה: ' + e.message, 'error');
-  }
+  openConfirmModal({
+    title: 'מחיקת קובץ',
+    message: 'למחוק את הקובץ מ-Drive? פעולה זו בלתי הפיכה.',
+    btnLabel: 'מחק', btnClass: 'btn-danger',
+    action: async () => {
+      try {
+        await apiCall('deleteFile', { fileId });
+        btn.closest('.project-file-item').remove();
+        toast('קובץ נמחק', 'success');
+      } catch(e) {
+        toast('שגיאה במחיקה: ' + e.message, 'error');
+      }
+    }
+  });
 }
 
 async function saveProductPanel() {
@@ -2911,14 +2847,20 @@ async function addProductNote() {
 }
 
 async function deleteProduct(id) {
-  if (!confirm('למחוק את המוצר?')) return;
-  try {
-    await apiCall('deleteProduct', { id });
-    S.products = S.products.filter(p => p.id !== id);
-    closePanel('product-panel');
-    renderProductsList();
-    toast('מוצר נמחק', 'success');
-  } catch(e) { toast('שגיאה במחיקה: ' + e.message, 'error'); }
+  openConfirmModal({
+    title: 'מחיקת מוצר',
+    message: 'למחוק את המוצר? פעולה זו בלתי הפיכה.',
+    btnLabel: 'מחק', btnClass: 'btn-danger',
+    action: async () => {
+      try {
+        await apiCall('deleteProduct', { id });
+        S.products = S.products.filter(p => p.id !== id);
+        closePanel('product-panel');
+        renderProductsList();
+        toast('מוצר נמחק', 'success');
+      } catch(e) { toast('שגיאה במחיקה: ' + e.message, 'error'); }
+    }
+  });
 }
 
 async function saveProductData(prod) {
