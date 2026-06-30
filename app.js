@@ -2550,6 +2550,18 @@ function openChangesPanel() {
   apiCall('updateLastSeen', { user: S.user.username, ts: now }).catch(() => {});
 }
 
+function markAllNotifsRead() {
+  const now = new Date().toISOString();
+  S.lastSeen = now;
+  S.newCount = 0;
+  try { localStorage.setItem('shiaim_lastseen_' + S.user.username, now); } catch {}
+  apiCall('updateLastSeen', { user: S.user.username, ts: now }).catch(() => {});
+  computeNotifications();
+  updateChangesBadge();
+  _renderNotifPanel();
+  toast('כל ההתראות סומנו כנקראו ✓', 'success');
+}
+
 function _renderNotifPanel() {
   const panel = document.getElementById('changes-panel');
   const body  = panel.querySelector('.panel-body');
@@ -2561,6 +2573,11 @@ function _renderNotifPanel() {
   const cl = body.querySelector('.changes-list');
   if (!cl) return;
   const bits = [];
+
+  if (tot > 0) {
+    bits.push('<div class="notif-markall-wrap" style="padding:.5rem .75rem;text-align:left">' +
+      '<button class="btn-secondary btn-sm" onclick="markAllNotifsRead()">סמן הכל כנקרא</button></div>');
+  }
 
   if (n.upcomingDeadlines.length) {
     bits.push('<div class="notif-group"><div class="notif-group-title">⏰ דדליינים קרובים</div>' +
@@ -2586,7 +2603,7 @@ function _renderNotifPanel() {
   }
 
   if (n.bossPriorities.length) {
-    bits.push('<div class="notif-group"><div class="notif-group-title">⭐ עד קעותיחת מהבוס</div>' +
+    bits.push('<div class="notif-group"><div class="notif-group-title">⭐ עדכוני דחיפות מהבוס</div>' +
       n.bossPriorities.map(c =>
         '<div class="change-item is-new"><div class="change-icon priority">⭐</div><div class="change-body">' +
         '<div class="change-project">' + escHtml(c.projectName) + '</div>' +
