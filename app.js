@@ -353,8 +353,9 @@ async function restoreSession() {
   S.token = token;
   try {
     const res = await apiCall('validateSession', { token });
-    if (res && res.ok) {
-      S.user = JSON.parse(userJson);
+    if (res && res.ok && res.user) {
+      S.user = res.user;                                   // role comes from server only
+      sessionStorage.setItem('shiaim_user', JSON.stringify(res.user));
       return true;
     }
   } catch (e) {
