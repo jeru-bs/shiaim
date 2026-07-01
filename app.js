@@ -875,6 +875,16 @@ function startInlineEdit(el, project) {
   el.appendChild(input);
   input.focus();
 
+  // Keep clicks inside the control from bubbling to the wrapper (which would
+  // re-trigger startInlineEdit and close a native select / date picker).
+  input.addEventListener('mousedown', e => e.stopPropagation());
+  input.addEventListener('click', e => e.stopPropagation());
+  if (type === 'select' || type === 'status') {
+    setTimeout(() => input.click(), 0);
+  } else if (type === 'date' && input.showPicker) {
+    try { input.showPicker(); } catch (e) {}
+  }
+
   const save = async () => {
     const newVal = input.value.trim() || (type === 'date' ? '' : current);
     if (newVal !== current) {
@@ -1097,8 +1107,12 @@ function startDesignInlineEdit(el, project, design, idx) {
   el.innerHTML = '';
   el.appendChild(input);
   input.focus();
-  if (type === 'status') {
+  input.addEventListener('mousedown', e => e.stopPropagation());
+  input.addEventListener('click', e => e.stopPropagation());
+  if (type === 'status' || type === 'select') {
     setTimeout(() => input.click(), 0);
+  } else if (type === 'date' && input.showPicker) {
+    try { input.showPicker(); } catch (e) {}
   }
 
   const save = async () => {
