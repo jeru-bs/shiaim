@@ -1080,6 +1080,28 @@ function renderDesignPanel(project, design, idx) {
         <button class="btn-gold" onclick="addDesignLog('info')">הוסף מידע</button>
       </div>
     </div>
+
+    <div class="panel-section">
+      <div class="section-title-row">
+        <span class="section-title">📎 קבצי העיצוב</span>
+        ${!project.folderId
+          ? '<span class="text-muted text-sm">תיקיית Drive תיוצר עם הפרויקט</span>'
+          : (design.folderId ? `
+              <label class="btn-upload-file" for="design-file-input">📎 הוסף קובץ</label>
+              <input type="file" id="design-file-input" class="file-input-hidden" multiple />
+              <a class="btn-drive-folder" href="https://drive.google.com/drive/folders/${escHtml(design.folderId)}" target="_blank" rel="noopener" title="פתח ב-Drive">📁</a>
+            ` : `
+              <button class="btn-secondary btn-sm" onclick="createDesignFolder()">📁 צור תיקייה</button>
+            `)}
+      </div>
+      <div class="project-files-list" id="design-files-list">
+        ${design.folderId
+          ? '<p class="text-muted text-sm">טוען קבצים…</p>'
+          : (project.folderId
+              ? '<p class="text-muted text-sm">צור תיקייה כדי לצרף קבצים</p>'
+              : '<p class="text-muted text-sm">אין תיקיית Drive לפרויקט עדיין</p>')}
+      </div>
+    </div>
   `;
 
   // Status select — direct change handler (no click-to-edit)
@@ -1104,6 +1126,18 @@ function renderDesignPanel(project, design, idx) {
         renderDesignPanel(project, project.designs[idx], idx);
       });
     });
+  }
+
+  // Design files: load list + wire upload input
+  if (design.folderId) {
+    loadDesignFiles(project, design, idx);
+    const dfi = body.querySelector('#design-file-input');
+    if (dfi) {
+      dfi.addEventListener('change', async e => {
+        for (const f of [...e.target.files]) await uploadDesignFile(project, design, idx, f);
+        e.target.value = '';
+      });
+    }
   }
 }
 
@@ -1219,6 +1253,89 @@ async function addDesign() {
     renderProjectPanel(project);
     toast('עיצוב נוסף', 'success');
   }
+}
+
+// ── Design file functions ──
+async function createDesignFolder() {
+  const project = S.projects.find(p => p.id === S.panelProjectId);
+  if (!project || S.panelDesignId === null) return;
+  const idx = S.panelDesignId;
+  const design = project.designs[idx];
+  if (!design) return;
+  if (!project.folderId) { toast('אין תיקיית Drive לפרויקט', 'error'); return; }
+  showSpinner(true);
+  try {
+    const result = await apiCall('getOrCreateDesignFolder', {
+      projectFolderId: project.folderId,
+      designName: design.name || `עיצוב ${idx + 1}`
+    });
+    design.folderId = result.folderId;
+    await saveProject(project);
+    renderDesignPanel(project, design, idx);
+    loadDesignFiles(project, design, idx);
+    toast('תיקייה נוצרה ✓', 'success');
+  } catch(e) {
+    toast('שגיאה ביצירת תיקייה: ' + e.message, 'error');
+  } finally { showSpinner(false); }
+}
+
+async function loadDesignFiles(project, design, idx) {
+  const listEl = document.getElementById('design-files-list');
+  if (!listEl || !design.folderId) return;
+  try {
+    const result = await apiCall('getProjectFiles', { folderId: design.folderId });
+    const files  = result.files || [];
+    if (!files.length) {
+      listEl.innerHTML = '<p class="text-muted text-sm">אין קבצים עדיין</p>';
+    } else {
+      listEl.innerHTML = files.map(f => `
+        <div class="project-file-item" data-file-id="${escHtml(f.id)}">
+          <span class="file-icon">${fileIcon(f.mimeType)}</span>
+          <a class="file-name" href="${escHtml(f.url)}" target="_blank" rel="noopener">${escHtml(f.name)}</a>
+          <span class="file-size">${formatFileSize(f.size)}</span>
+          <button class="btn-file-delete" onclick="deleteDesignFile('${escHtml(f.id)}', this)" title="מחק">✕</button>
+        </div>`).join('');
+    }
+  } catch(e) {
+    if (listEl) listEl.innerHTML = '<p class="text-muted text-sm">שגיאה בטעינת קבצים</p>';
+  }
+}
+
+async function uploadDesignFile(project, design, idx, file) {
+  if (!design.folderId) { toast('אין תיקיית Drive לעיצוב', 'error'); return; }
+  const MAX = 20 * 1024 * 1024;
+  if (file.size > MAX) { toast(`${file.name} — גדול מ-20MB`, 'error'); return; }
+  toast(`מעלה: ${file.name}…`, 'info');
+  try {
+    const base64 = await fileToBase64(file);
+    await apiCall('uploadFile', {
+      folderId: design.folderId,
+      filename: file.name,
+      base64,
+      mimeType: file.type || 'application/octet-stream'
+    });
+    toast(`${file.name} הועלה ✓`, 'success');
+    loadDesignFiles(project, design, idx);
+  } catch(e) {
+    toast('שגיאה בהעלאה: ' + e.message, 'error');
+  }
+}
+
+async function deleteDesignFile(fileId, btn) {
+  openConfirmModal({
+    title: 'מחיקת קובץ',
+    message: 'למחוק את הקובץ מ-Drive? פעולה זו בלתי הפיכה.',
+    btnLabel: 'מחק', btnClass: 'btn-danger',
+    action: async () => {
+      try {
+        await apiCall('deleteFile', { fileId });
+        btn.closest('.project-file-item').remove();
+        toast('קובץ נמחק', 'success');
+      } catch(e) {
+        toast('שגיאה במחיקה: ' + e.message, 'error');
+      }
+    }
+  });
 }
 
 // ================================================================
