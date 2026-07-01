@@ -666,7 +666,69 @@ function renderProjectPanel(p) {
   let tabContent = '';
 
   if (S.panelTab === 'overview') {
-    tabContent = `<div class="panel-section"><div class="empty-state">סקירת הפרויקט תופיע כאן</div></div>`;
+    const ovDs        = deadlineStatus(p.deadline);
+    const ovTypeLabel = p.type === 'office' ? 'פרויקט משרד' : 'פרויקט לקוח';
+    const ovTypeClass = p.type === 'office' ? 'office' : 'client';
+    const ovLastStatus = S.statuses[S.statuses.length - 1];
+    const ovActiveDesigns = (p.designs || []).filter(d => d.status && d.status !== ovLastStatus).length;
+    const ovNotes = p.notes || [];
+    const ovInfo  = p.importantInfo || [];
+    const ovLatestNote = ovNotes.length ? ovNotes[ovNotes.length - 1] : null;
+    const ovLatestInfo = ovInfo.length  ? ovInfo[ovInfo.length - 1]   : null;
+    const ovDeadlineChip = p.deadline
+      ? `<span class="deadline-chip ${ovDs}">${ovDs === 'overdue' ? '⚠️' : ovDs === 'soon' ? '⏰' : '📅'} ${fmt.date(p.deadline)}</span>`
+      : '<span class="text-muted text-sm">ללא דדליין</span>';
+
+    tabContent = `
+      <div class="panel-section">
+        <div class="ov-grid">
+          <div class="ov-card ov-card-wide">
+            <div class="ov-card-title">תקציר פרויקט</div>
+            <div class="ov-name">${escHtml(p.name)}</div>
+            ${p.client ? `<div class="ov-client">${escHtml(p.client)}</div>` : ''}
+            <div class="ov-chips">
+              <span class="status-badge${p.completed ? ' completed' : ''}">${escHtml(p.status || 'בתכנון')}</span>
+              <span class="type-badge ${ovTypeClass}">${ovTypeLabel}</span>
+              ${ovDeadlineChip}
+            </div>
+            <div class="ov-priority-row">
+              <span class="ov-mini-label">דחיפות</span>
+              ${p.priority ? renderPriorityDisplay(p.priority, false) : '<span class="text-muted text-sm">—</span>'}
+            </div>
+          </div>
+
+          <div class="ov-card">
+            <div class="ov-card-title">עיצובים</div>
+            <div class="ov-stat">${designsCount}</div>
+            <div class="ov-stat-sub">${designsCount ? `${ovActiveDesigns} פעילים` : 'אין עיצובים עדיין'}</div>
+          </div>
+
+          <div class="ov-card">
+            <div class="ov-card-title">קבצים</div>
+            ${p.folderId
+              ? '<div class="ov-stat-sub">מחובר ל-Drive<br><span class="text-muted text-sm">צפייה בטאב קבצים</span></div>'
+              : '<div class="ov-stat-sub text-muted">אין תיקייה מחוברת</div>'}
+          </div>
+
+          <div class="ov-card ov-card-wide">
+            <div class="ov-card-title">הערות ומידע חשוב</div>
+            ${(ovNotes.length || ovInfo.length) ? `
+              <div class="ov-notes">
+                ${ovLatestInfo ? `<div class="ov-note-line"><span class="ov-note-tag info">מידע</span><span class="ov-note-text">${escHtml(ovLatestInfo.text)}</span></div>` : ''}
+                ${ovLatestNote ? `<div class="ov-note-line"><span class="ov-note-tag">הערה</span><span class="ov-note-text">${escHtml(ovLatestNote.text)}</span></div>` : ''}
+                <div class="ov-note-counts">${ovNotes.length} הערות · ${ovInfo.length} מידע חשוב</div>
+              </div>
+            ` : '<div class="ov-stat-sub text-muted">אין הערות או מידע חשוב עדיין</div>'}
+          </div>
+
+          <div class="ov-card ov-card-wide">
+            <div class="ov-card-title">Drive</div>
+            ${p.folderId
+              ? `<a class="btn-drive-folder ov-drive-btn" href="https://drive.google.com/drive/folders/${escHtml(p.folderId)}" target="_blank" rel="noopener" title="פתח תיקייה ב-Drive">📁 פתח תיקיית Drive</a>`
+              : '<div class="ov-stat-sub text-muted">אין תיקייה מחוברת</div>'}
+          </div>
+        </div>
+      </div>`;
   } else if (S.panelTab === 'details') {
     tabContent = `
       <div class="panel-section">
