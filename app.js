@@ -1796,6 +1796,10 @@ function openWing(name) {
   const sectionBar     = document.getElementById('section-header-bar');
   const fab            = document.getElementById('add-btn');
 
+  // Sidebar active-state highlight (Pulse 4B) — visual only
+  document.querySelectorAll('.sidebar-nav-item').forEach(b =>
+    b.classList.toggle('active', (b.dataset.wing || '') === (name || '')));
+
   if (!name) {
     S.currentWing = null;
     wingContent.classList.add('hidden');

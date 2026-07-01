@@ -63,7 +63,35 @@
 <!-- ============================================================
      MAIN APP
      ============================================================ -->
-<div id="app" class="screen hidden" style="display:flex;flex-direction:column;min-height:100vh;">
+<div id="app" class="screen hidden app-shell" style="display:flex;flex-direction:row;min-height:100vh;">
+
+  <!-- Right Sidebar Navigation (Pulse 4B) -->
+  <aside class="app-sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo"><span>ש</span></div>
+      <div class="sidebar-brand-text">
+        <span class="sidebar-brand-title">שיאים</span>
+        <span class="sidebar-brand-sub">התנהלות שוטפת</span>
+      </div>
+    </div>
+    <nav id="wing-tiles" class="sidebar-nav">
+      <button class="sidebar-nav-item active" data-wing="" onclick="openWing(null)">
+        <span class="wing-tile-icon">📋</span><span class="sidebar-nav-label">פרויקטים</span>
+      </button>
+      <button class="sidebar-nav-item" data-wing="clients" onclick="openWing('clients')">
+        <span class="wing-tile-icon">👤</span><span class="sidebar-nav-label">לקוחות</span>
+      </button>
+      <button class="sidebar-nav-item" data-wing="ideas" onclick="openWing('ideas')">
+        <span class="wing-tile-icon">💡</span><span class="sidebar-nav-label">רעיונות</span>
+      </button>
+      <button class="sidebar-nav-item" data-wing="products" onclick="openWing('products')">
+        <span class="wing-tile-icon">📦</span><span class="sidebar-nav-label">מוצרים וספקים</span>
+      </button>
+    </nav>
+  </aside>
+
+  <!-- Workspace -->
+  <div class="app-workspace">
 
   <!-- Header -->
   <header class="app-header">
@@ -127,22 +155,6 @@
     <button id="clear-filters" class="btn-clear-filters">נקה</button>
   </div>
 
-  <!-- Wing Navigation Tiles -->
-  <div id="wing-tiles" class="wing-tiles">
-    <button class="wing-tile" onclick="openWing('ideas')">
-      <span class="wing-tile-icon">💡</span>
-      <span class="wing-tile-label">רעיונות</span>
-    </button>
-    <button class="wing-tile" onclick="openWing('products')">
-      <span class="wing-tile-icon">📦</span>
-      <span class="wing-tile-label">מוצרים וספקים</span>
-    </button>
-    <button class="wing-tile" onclick="openWing('clients')">
-      <span class="wing-tile-icon">👤</span>
-      <span class="wing-tile-label">לקוחות</span>
-    </button>
-  </div>
-
   <!-- Project List -->
   <main id="project-list" class="project-list"></main>
 
@@ -152,6 +164,7 @@
   <!-- FAB -->
   <button id="add-btn" class="fab" title="פרויקט חדש">+</button>
 
+  </div><!-- /.app-workspace -->
 </div><!-- /#app -->
 
 <!-- ============================================================
