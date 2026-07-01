@@ -27,6 +27,7 @@
   --teal:        #0D9488;
   --surface-alt: #F7F8FB;
   --workspace:   #EDF0F6;
+  --ptable-cols: minmax(0,2.3fr) minmax(110px,1.5fr) 58px 92px 104px 54px;
   --focus-ring:  0 0 0 3px rgba(37,99,235,0.15);
   --shadow-sm:   0 1px 4px rgba(27,43,94,0.08);
   --shadow:      0 2px 10px rgba(27,43,94,0.10);
@@ -306,17 +307,17 @@ a { text-decoration: none; color: inherit; }
   background: var(--workspace);
 }
 
-/* Central content area — the big white "dashboard card" (Pulse 4C.2) */
+/* Central content area — white "dashboard card" (Pulse 4C.2 / 4C.3) */
 .workspace-body {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 1.25rem;
+  overflow-y: auto;
+  padding: 1.25rem 1.25rem 5rem;
 }
 .content-panel {
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;          /* size to content — no empty white sea */
   display: flex;
   flex-direction: column;
   background: var(--surface);
@@ -472,9 +473,9 @@ a { text-decoration: none; color: inherit; }
 .filters-bar {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 0.8rem 1.35rem;
+  padding: 0.65rem 1.35rem;
   display: flex;
-  gap: 0.55rem;
+  gap: 0.5rem;
   flex-shrink: 0;
   align-items: center;
 }
@@ -582,9 +583,20 @@ a { text-decoration: none; color: inherit; }
 
 /* ── Project List (dashboard table) ── */
 .project-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 0 4rem;
+  padding: 0;
+}
+.ptable-head {
+  display: grid;
+  grid-template-columns: var(--ptable-cols);
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 1.35rem;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: var(--text-muted);
 }
 
 .empty-state {
@@ -597,19 +609,33 @@ a { text-decoration: none; color: inherit; }
 
 /* ── Project Row (table row) ── */
 .project-row {
+  display: grid;
+  grid-template-columns: var(--ptable-cols);
+  align-items: center;
+  gap: 0.75rem;
   background: var(--surface);
   border: none;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
   margin: 0;
   box-shadow: none;
-  padding: 0.9rem 1.35rem;
+  padding: 0.7rem 1.35rem;
   cursor: pointer;
   transition: background var(--transition);
   position: relative;
   overflow: hidden;
 }
 .project-row:last-child { border-bottom: none; }
+.pcol { min-width: 0; display: flex; align-items: center; }
+.pcol-name { flex-direction: column; align-items: flex-start; gap: 1px; }
+.row-client {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
 .project-row::before {
   content: '';
   position: absolute;
@@ -637,14 +663,16 @@ a { text-decoration: none; color: inherit; }
 }
 .row-name {
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   color: var(--navy);
   letter-spacing: -0.2px;
-  flex: 1;
-  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
-.row-priority { flex-shrink: 0; display: flex; align-items: center; gap: 2px; }
-.priority-star { font-size: 0.8rem; line-height: 1; }
+.row-priority { flex-shrink: 0; display: flex; align-items: center; gap: 1px; }
+.priority-star { font-size: 0.72rem; line-height: 1; }
 .priority-star.filled { color: var(--gold); }
 .priority-star.empty  { color: var(--border-dark); }
 
@@ -704,17 +732,19 @@ a { text-decoration: none; color: inherit; }
 .type-badge.client { background: #FFF8E1; color: #8B6500; }
 .type-badge.office { background: #E8EAF6; color: #3949AB; }
 
-.row-indicators { display: flex; align-items: center; gap: 0.25rem; flex-shrink: 0; opacity: 0.85; }
+.row-indicators { display: flex; align-items: center; gap: 0.2rem; flex-shrink: 0; }
 .indicator {
-  width: 18px; height: 18px;
+  width: 17px; height: 17px;
   border-radius: 50%;
-  font-size: 0.56rem;
+  font-size: 0.52rem;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 700;
+  background: #EEF1F6;
+  filter: grayscale(0.45);
+  opacity: 0.8;
 }
-.indicator.notes    { background: #FFF3E0; color: #E65100; }
-.indicator.info     { background: #E3F2FD; color: #1565C0; }
-.indicator.designs  { background: #F3E5F5; color: #7B1FA2; }
+.indicator.notes,
+.indicator.info,
+.indicator.designs { background: #EEF1F6; color: var(--text-sec); }
 
 .deadline-chip {
   font-size: 0.75rem;

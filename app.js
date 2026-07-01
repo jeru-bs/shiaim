@@ -449,7 +449,16 @@ function renderProjectList() {
     return;
   }
 
-  list.innerHTML = projects.map(p => renderProjectRow(p)).join('');
+  const tableHead = `
+    <div class="ptable-head">
+      <span class="pcol-name">פרויקט</span>
+      <span class="pcol-status">סטטוס</span>
+      <span class="pcol-type">סוג</span>
+      <span class="pcol-priority">דחיפות</span>
+      <span class="pcol-deadline">דדליין</span>
+      <span class="pcol-ind">מידע</span>
+    </div>`;
+  list.innerHTML = tableHead + projects.map(p => renderProjectRow(p)).join('');
 
   // Attach click handlers
   list.querySelectorAll('.project-row').forEach(row => {
@@ -497,19 +506,17 @@ function renderProjectRow(p) {
 
   return `
     <div class="project-row" data-id="${escHtml(p.id)}" data-priority="${p.priority || 0}">
-      <div class="row-top">
+      <div class="pcol pcol-name">
         <span class="row-name">${escHtml(p.name)}</span>
-        <div class="row-priority">${starsHtml}</div>
+        ${p.client ? `<span class="row-client">${escHtml(p.client)}</span>` : ''}
       </div>
-      <div class="row-bottom">
-        <div class="row-meta">
-          <span class="status-badge ${p.completed ? 'completed' : ''}" data-stage="${S.statuses.indexOf(p.status)}">${escHtml(p.status || 'ללא סטטוס')}</span>
-          ${p.client ? `<span class="client-text">${escHtml(p.client)}</span>` : ''}
-          <span class="type-badge ${typeClass}">${typeLabel}</span>
-          ${deadlineHtml}
-        </div>
-        <div class="row-indicators">${indicators}</div>
+      <div class="pcol pcol-status">
+        <span class="status-badge ${p.completed ? 'completed' : ''}" data-stage="${S.statuses.indexOf(p.status)}">${escHtml(p.status || 'ללא סטטוס')}</span>
       </div>
+      <div class="pcol pcol-type"><span class="type-badge ${typeClass}">${typeLabel}</span></div>
+      <div class="pcol pcol-priority"><div class="row-priority">${starsHtml}</div></div>
+      <div class="pcol pcol-deadline">${deadlineHtml}</div>
+      <div class="pcol pcol-ind"><div class="row-indicators">${indicators}</div></div>
     </div>
     ${subRows}`;
 }
