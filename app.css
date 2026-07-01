@@ -27,6 +27,7 @@
   --teal:        #0D9488;
   --surface-alt: #F7F8FB;
   --workspace:   #EDF0F6;
+  --divider:     #D2DAE8;
   --ptable-cols: minmax(0,2.3fr) minmax(110px,1.5fr) 58px 92px 104px 54px;
   --focus-ring:  0 0 0 3px rgba(37,99,235,0.15);
   --shadow-sm:   0 1px 4px rgba(27,43,94,0.08);
@@ -590,13 +591,14 @@ a { text-decoration: none; color: inherit; }
   grid-template-columns: var(--ptable-cols);
   align-items: center;
   gap: 0.75rem;
-  padding: 0.55rem 1.35rem;
-  background: var(--surface-alt);
-  border-bottom: 1px solid var(--border);
-  font-size: 0.7rem;
-  font-weight: 700;
+  padding: 0.7rem 1.35rem;
+  background: #EAEFF7;
+  border-bottom: 2px solid var(--divider);
+  font-size: 0.72rem;
+  font-weight: 800;
   letter-spacing: 0.2px;
-  color: var(--text-muted);
+  color: var(--text-sec);
+  text-transform: none;
 }
 
 .empty-state {
@@ -613,19 +615,20 @@ a { text-decoration: none; color: inherit; }
   grid-template-columns: var(--ptable-cols);
   align-items: center;
   gap: 0.75rem;
+  min-height: 52px;
   background: var(--surface);
   border: none;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--divider);
   border-radius: 0;
   margin: 0;
   box-shadow: none;
-  padding: 0.7rem 1.35rem;
+  padding: 0.6rem 1.35rem;
   cursor: pointer;
   transition: background var(--transition);
   position: relative;
   overflow: hidden;
 }
-.project-row:last-child { border-bottom: none; }
+.project-row:hover { background: #F1F5FB; }
 .pcol { min-width: 0; display: flex; align-items: center; }
 .pcol-name { flex-direction: column; align-items: flex-start; gap: 1px; }
 .row-client {
@@ -645,7 +648,6 @@ a { text-decoration: none; color: inherit; }
   border-radius: 0 var(--radius) var(--radius) 0;
   transition: background var(--transition);
 }
-.project-row:hover { background: var(--surface-alt); }
 
 /* Priority color strip */
 .project-row[data-priority="5"]::before { background: #E53935; }
@@ -734,13 +736,13 @@ a { text-decoration: none; color: inherit; }
 
 .row-indicators { display: flex; align-items: center; gap: 0.2rem; flex-shrink: 0; }
 .indicator {
-  width: 17px; height: 17px;
+  width: 16px; height: 16px;
   border-radius: 50%;
-  font-size: 0.52rem;
+  font-size: 0.5rem;
   display: flex; align-items: center; justify-content: center;
   background: #EEF1F6;
-  filter: grayscale(0.45);
-  opacity: 0.8;
+  filter: grayscale(0.55);
+  opacity: 0.75;
 }
 .indicator.notes,
 .indicator.info,
@@ -1309,7 +1311,7 @@ a { text-decoration: none; color: inherit; }
 .design-subrow {
   background: var(--surface-alt);
   border: none;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--divider);
   border-radius: 0;
   margin: 0;
   padding: 0.5rem 2.5rem 0.5rem 1.35rem;
