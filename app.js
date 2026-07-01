@@ -503,7 +503,7 @@ function renderProjectRow(p) {
       </div>
       <div class="row-bottom">
         <div class="row-meta">
-          <span class="status-badge ${p.completed ? 'completed' : ''}">${escHtml(p.status || 'ללא סטטוס')}</span>
+          <span class="status-badge ${p.completed ? 'completed' : ''}" data-stage="${S.statuses.indexOf(p.status)}">${escHtml(p.status || 'ללא סטטוס')}</span>
           ${p.client ? `<span class="client-text">${escHtml(p.client)}</span>` : ''}
           <span class="type-badge ${typeClass}">${typeLabel}</span>
           ${deadlineHtml}
