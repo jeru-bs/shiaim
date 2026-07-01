@@ -722,7 +722,9 @@ function renderProjectPanel(p) {
           ${designsCount === 0 ? '<p class="text-muted text-sm">אין עיצובים נוספים עדיין</p>' : ''}
           <button class="btn-add-design btn-add-design-lg" onclick="addDesign()">+ הוסף עיצוב</button>
         </div>
-      </div>
+      </div>`;
+  } else if (S.panelTab === 'files') {
+    tabContent = `
       <div class="panel-section">
         <div class="section-title-row">
           <span class="section-title">קבצי הפרויקט</span>
@@ -736,8 +738,6 @@ function renderProjectPanel(p) {
           ${p.folderId ? '<p class="text-muted text-sm">טוען קבצים…</p>' : ''}
         </div>
       </div>`;
-  } else if (S.panelTab === 'files') {
-    tabContent = `<div class="panel-section"><div class="empty-state">קבצי הפרויקט יופיעו כאן</div></div>`;
   } else if (S.panelTab === 'notes') {
     tabContent = `
       <div class="panel-section">
@@ -773,8 +773,8 @@ function renderProjectPanel(p) {
     });
   });
 
-  // Designs tab: load files + wire upload
-  if (S.panelTab === 'designs' && p.folderId) {
+  // Files tab: load files + wire upload
+  if (S.panelTab === 'files' && p.folderId) {
     loadProjectFiles(p);
     const fileInput = body.querySelector('#project-file-input');
     if (fileInput) {
