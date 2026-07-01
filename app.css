@@ -244,14 +244,19 @@ a { text-decoration: none; color: inherit; }
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .sidebar-logo {
-  width: 38px; height: 38px;
-  background: rgba(201,168,76,0.15);
+  width: 42px; height: 42px;
+  background: #fff;
   border: 1.5px solid var(--gold);
   border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
-  color: var(--gold);
-  font-weight: 800;
+  overflow: hidden;
   flex-shrink: 0;
+}
+.sidebar-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 .sidebar-brand-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
 .sidebar-brand-title { font-size: 1.05rem; font-weight: 800; color: #fff; }
