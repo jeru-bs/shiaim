@@ -762,8 +762,35 @@ function renderProjectPanel(p) {
       </div>`;
   }
 
+  const ds = deadlineStatus(p.deadline);
+  const typeLabel = p.type === 'office' ? 'פרויקט משרד' : 'פרויקט לקוח';
+  const typeClass = p.type === 'office' ? 'office' : 'client';
+  const headerDeadline = p.deadline
+    ? `<span class="deadline-chip ${ds}">${ds === 'overdue' ? '⚠️' : ds === 'soon' ? '⏰' : '📅'} ${fmt.date(p.deadline)}</span>`
+    : '';
+  const headerDrive = p.folderId
+    ? `<a class="btn-drive-folder pph-drive" href="https://drive.google.com/drive/folders/${escHtml(p.folderId)}" target="_blank" rel="noopener" title="פתח תיקייה ב-Drive">📁</a>`
+    : '';
+  const headerPriority = p.priority
+    ? `<span class="pph-priority">${renderPriorityDisplay(p.priority, false)}</span>`
+    : '';
+  const headerHtml = `
+    <div class="project-panel-header">
+      <div class="pph-top">
+        <div class="pph-name">${escHtml(p.name)}</div>
+        ${headerDrive}
+      </div>
+      ${p.client ? `<div class="pph-client">${escHtml(p.client)}</div>` : ''}
+      <div class="pph-chips">
+        <span class="status-badge">${escHtml(p.status || 'בתכנון')}</span>
+        <span class="type-badge ${typeClass}">${typeLabel}</span>
+        ${headerDeadline}
+        ${headerPriority}
+      </div>
+    </div>`;
+
   const body = panel.querySelector('.panel-body');
-  body.innerHTML = tabsHtml + `<div class="panel-tab-content">${tabContent}</div>`;
+  body.innerHTML = headerHtml + tabsHtml + `<div class="panel-tab-content">${tabContent}</div>`;
 
   // Tab click handlers
   body.querySelectorAll('.panel-tab-btn').forEach(btn => {
