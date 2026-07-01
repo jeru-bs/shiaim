@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="שיאים">
   <title>התנהלות שוטפת — שיאים</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="app.css?v=55">
+  <link rel="stylesheet" href="app.css?v=56">
 </head>
 <body>
 
@@ -112,6 +112,10 @@
     </div>
   </header>
 
+  <!-- Main content area (Pulse 4C.2) -->
+  <div class="workspace-body">
+  <div class="content-panel">
+
   <!-- View Toggle + Section Label -->
   <div id="section-header-bar" class="dashboard-header">
     <div class="section-header">
@@ -155,8 +159,12 @@
   <!-- Project List -->
   <main id="project-list" class="project-list"></main>
 
+  </div><!-- /.content-panel -->
+
   <!-- Wing Content (replaces project list when active) -->
   <div id="wing-content" class="wing-content hidden"></div>
+
+  </div><!-- /.workspace-body -->
 
   <!-- FAB -->
   <button id="add-btn" class="fab" title="פרויקט חדש">+</button>

@@ -306,6 +306,28 @@ a { text-decoration: none; color: inherit; }
   background: var(--workspace);
 }
 
+/* Central content area — the big white "dashboard card" (Pulse 4C.2) */
+.workspace-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+}
+.content-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+/* When a wing is open, project-list is hidden -> collapse the empty panel */
+.content-panel:has(.project-list.hidden) { display: none; }
+
 /* Thin, secondary top header inside workspace */
 .app-workspace .app-header {
   background: var(--surface);
@@ -446,14 +468,11 @@ a { text-decoration: none; color: inherit; }
   flex-shrink: 0;
 }
 
-/* ── Filters ── */
+/* ── Filters (dashboard toolbar) ── */
 .filters-bar {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-sm);
-  margin: 0 1rem 0.85rem;
-  padding: 0.7rem 0.8rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0.8rem 1.35rem;
   display: flex;
   gap: 0.55rem;
   flex-shrink: 0;
@@ -537,8 +556,9 @@ a { text-decoration: none; color: inherit; }
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 1.1rem 1.25rem 0.85rem;
+  padding: 1.1rem 1.35rem;
   flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
 }
 .dashboard-header .section-header {
   padding: 0;
@@ -560,11 +580,11 @@ a { text-decoration: none; color: inherit; }
   color: var(--text-muted);
 }
 
-/* ── Project List ── */
+/* ── Project List (dashboard table) ── */
 .project-list {
   flex: 1;
   overflow-y: auto;
-  padding: 0 1rem 5rem;
+  padding: 0 0 4rem;
 }
 
 .empty-state {
@@ -575,19 +595,21 @@ a { text-decoration: none; color: inherit; }
 .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
 .empty-state p { font-size: 0.9rem; }
 
-/* ── Project Row ── */
+/* ── Project Row (table row) ── */
 .project-row {
   background: var(--surface);
-  border-radius: 12px;
-  margin-bottom: 0.65rem;
-  padding: 1.15rem 1.25rem;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  margin: 0;
+  box-shadow: none;
+  padding: 0.9rem 1.35rem;
   cursor: pointer;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-  transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+  transition: background var(--transition);
   position: relative;
   overflow: hidden;
 }
+.project-row:last-child { border-bottom: none; }
 .project-row::before {
   content: '';
   position: absolute;
@@ -597,12 +619,7 @@ a { text-decoration: none; color: inherit; }
   border-radius: 0 var(--radius) var(--radius) 0;
   transition: background var(--transition);
 }
-.project-row:hover {
-  border-color: var(--blue);
-  box-shadow: var(--shadow);
-  transform: translateY(-1px);
-}
-.project-row:active { transform: translateY(0); }
+.project-row:hover { background: var(--surface-alt); }
 
 /* Priority color strip */
 .project-row[data-priority="5"]::before { background: #E53935; }
@@ -687,11 +704,11 @@ a { text-decoration: none; color: inherit; }
 .type-badge.client { background: #FFF8E1; color: #8B6500; }
 .type-badge.office { background: #E8EAF6; color: #3949AB; }
 
-.row-indicators { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
+.row-indicators { display: flex; align-items: center; gap: 0.25rem; flex-shrink: 0; opacity: 0.85; }
 .indicator {
-  width: 22px; height: 22px;
+  width: 18px; height: 18px;
   border-radius: 50%;
-  font-size: 0.65rem;
+  font-size: 0.56rem;
   display: flex; align-items: center; justify-content: center;
   font-weight: 700;
 }
@@ -1260,19 +1277,19 @@ a { text-decoration: none; color: inherit; }
 
 /* ── Design Sub-rows (main list) ── */
 .design-subrow {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-top: none;
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-  margin: -0.35rem 0.5rem 0.4rem 2rem;
-  padding: 0.38rem 0.9rem;
+  background: var(--surface-alt);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  margin: 0;
+  padding: 0.5rem 2.5rem 0.5rem 1.35rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.55rem;
   transition: background var(--transition);
 }
-.design-subrow:hover { background: #EEF1FA; }
+.design-subrow:hover { background: #E9EDF4; }
 .design-sub-icon { font-size: 0.78rem; color: var(--text-muted); flex-shrink: 0; }
 .design-sub-name {
   font-size: 0.8rem;
