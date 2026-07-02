@@ -1885,27 +1885,61 @@ function renderClientPanel(client) {
   const panel = document.getElementById('client-panel');
   panel.querySelector('.panel-title').textContent = client.name;
   const body = panel.querySelector('.panel-body');
-  body.innerHTML = `
-    <div class="panel-section">
+
+  // Backward-compat: derive a primary contact from legacy phone/email if none yet
+  ensureClientContacts(client);
+  const contacts = client.contacts;
+
+  const contactCard = (c, i) => `
+    <div class="contact-card">
+      <div class="contact-card-head">
+        <span class="contact-badge">${i === 0 ? 'איש קשר ראשי' : 'איש קשר'}</span>
+        ${i > 0 ? `<button class="btn-contact-del" onclick="deleteClientContact(${i})" title="מחק איש קשר">✕</button>` : ''}
+      </div>
       <div class="field-grid">
-        <div class="field-item full">
-          <span class="field-label">שם</span>
-          <div class="field-value editable" data-cfield="name" data-type="text">${escHtml(client.name)}</div>
+        <div class="field-item">
+          <span class="field-label">שם איש קשר</span>
+          <div class="field-value editable" data-contact-idx="${i}" data-contact-field="name" data-type="text">
+            ${c.name ? escHtml(c.name) : '<span class="placeholder">—</span>'}
+          </div>
+        </div>
+        <div class="field-item">
+          <span class="field-label">תפקיד</span>
+          <div class="field-value editable" data-contact-idx="${i}" data-contact-field="role" data-type="text">
+            ${c.role ? escHtml(c.role) : '<span class="placeholder">—</span>'}
+          </div>
         </div>
         <div class="field-item">
           <span class="field-label">טלפון</span>
-          <div class="field-value editable" data-cfield="phone" data-type="text">
-            ${client.phone ? escHtml(client.phone) : '<span class="placeholder">—</span>'}
+          <div class="field-value editable" data-contact-idx="${i}" data-contact-field="phone" data-type="text">
+            ${c.phone ? escHtml(c.phone) : '<span class="placeholder">—</span>'}
           </div>
         </div>
         <div class="field-item">
           <span class="field-label">אימייל</span>
-          <div class="field-value editable" data-cfield="email" data-type="text">
-            ${client.email ? escHtml(client.email) : '<span class="placeholder">—</span>'}
+          <div class="field-value editable" data-contact-idx="${i}" data-contact-field="email" data-type="text">
+            ${c.email ? escHtml(c.email) : '<span class="placeholder">—</span>'}
           </div>
         </div>
+      </div>
+    </div>`;
+
+  body.innerHTML = `
+    <div class="panel-section">
+      <div class="section-title">פרטי חברה</div>
+      <div class="field-grid">
         <div class="field-item full">
-          <span class="field-label">כתובת</span>
+          <span class="field-label">שם חברה / לקוח</span>
+          <div class="field-value editable" data-cfield="name" data-type="text">${escHtml(client.name)}</div>
+        </div>
+        <div class="field-item">
+          <span class="field-label">ח.פ.</span>
+          <div class="field-value editable" data-cfield="companyId" data-type="text">
+            ${client.companyId ? escHtml(client.companyId) : '<span class="placeholder">—</span>'}
+          </div>
+        </div>
+        <div class="field-item">
+          <span class="field-label">כתובת משרד</span>
           <div class="field-value editable" data-cfield="address" data-type="text">
             ${client.address ? escHtml(client.address) : '<span class="placeholder">—</span>'}
           </div>
@@ -1917,11 +1951,87 @@ function renderClientPanel(client) {
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title-row">
+        <span class="section-title">אנשי קשר</span>
+        <button class="btn-gold btn-sm" onclick="addClientContact()">+ איש קשר</button>
+      </div>
+      <div class="contacts-list">
+        ${contacts.map((c, i) => contactCard(c, i)).join('')}
+      </div>
     </div>`;
 
-  body.querySelectorAll('.field-value.editable').forEach(el => {
+  body.querySelectorAll('.field-value.editable[data-cfield]').forEach(el => {
     el.addEventListener('click', () => startClientInlineEdit(el, client));
   });
+  body.querySelectorAll('.field-value.editable[data-contact-idx]').forEach(el => {
+    el.addEventListener('click', () =>
+      startContactInlineEdit(el, client, parseInt(el.dataset.contactIdx), el.dataset.contactField));
+  });
+}
+
+// Ensure a client has at least a primary contact (migrates legacy phone/email in-memory)
+function ensureClientContacts(client) {
+  if (!Array.isArray(client.contacts) || client.contacts.length === 0) {
+    client.contacts = [{ name: '', phone: client.phone || '', email: client.email || '', role: '' }];
+  }
+  return client.contacts;
+}
+
+// Keep legacy top-level phone/email mirrored to the primary contact
+function syncClientPrimary(client) {
+  const p = (client.contacts && client.contacts[0]) || {};
+  client.phone = p.phone || '';
+  client.email = p.email || '';
+}
+
+function addClientContact() {
+  const client = S.clients.find(c => c.id === S.panelClientId);
+  if (!client) return;
+  ensureClientContacts(client);
+  client.contacts.push({ name: '', phone: '', email: '', role: '' });
+  renderClientPanel(client);   // in-memory; persists when a field is edited
+}
+
+async function deleteClientContact(idx) {
+  const client = S.clients.find(c => c.id === S.panelClientId);
+  if (!client || idx <= 0) return;   // never delete the primary contact
+  ensureClientContacts(client);
+  client.contacts.splice(idx, 1);
+  syncClientPrimary(client);
+  const ok = await saveClientData(client);
+  if (ok) { renderClientPanel(client); renderClientsList(); toast('איש קשר נמחק', 'success'); }
+}
+
+function startContactInlineEdit(el, client, idx, field) {
+  ensureClientContacts(client);
+  const contact = client.contacts[idx];
+  if (!contact) return;
+  const current = contact[field] || '';
+  const input = document.createElement('input');
+  input.type      = 'text';
+  input.className = 'field-edit-input';
+  input.value     = current;
+  el.innerHTML = '';
+  el.appendChild(input);
+  input.focus();
+
+  const save = async () => {
+    const newVal = input.value.trim();
+    if (newVal !== current) {
+      contact[field] = newVal;
+      syncClientPrimary(client);   // mirror legacy phone/email from primary contact
+      const ok = await saveClientData(client);
+      if (ok) { renderClientPanel(client); renderClientsList(); toast('נשמר ✓', 'success'); }
+      else    { contact[field] = current; renderClientPanel(client); }
+    } else {
+      renderClientPanel(client);
+    }
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
 }
 
 function startClientInlineEdit(el, client) {
