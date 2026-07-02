@@ -340,6 +340,38 @@
 </div>
 
 <!-- ============================================================
+     ADD CLIENT MODAL
+     ============================================================ -->
+<div id="add-client-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">לקוח חדש</span>
+      <button class="btn-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">שם הלקוח *</label>
+        <input type="text" id="add-client-name" class="form-input" placeholder="שם הלקוח" autocomplete="off" />
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">טלפון</label>
+          <input type="text" id="add-client-phone" class="form-input" placeholder="מספר טלפון" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">אימייל</label>
+          <input type="email" id="add-client-email" class="form-input" placeholder="כתובת אימייל" autocomplete="off" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-submit-add-client" class="btn-gold">הוסף לקוח</button>
+      <button class="btn-secondary btn-modal-close">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
      CONFIRM DELETE MODAL
      ============================================================ -->
 <div id="confirm-modal" class="modal-backdrop hidden">
