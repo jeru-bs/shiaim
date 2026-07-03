@@ -54,6 +54,7 @@ const S = {
   panelTab:       'details',
   panelIdeaId:          null,
   panelClientId:        null,
+  clientTab:            'company',   // 'company' | 'contacts' — inner tab of the client panel
   panelManufacturerId:  null,
   currentWing:          null,
   productsSubTab:       'manufacturers',
@@ -1877,6 +1878,7 @@ function openClientPanel(id) {
   const client = S.clients.find(c => c.id === id);
   if (!client) return;
   S.panelClientId = id;
+  S.clientTab = 'company';
   renderClientPanel(client);
   openPanel('client-panel');
 }
@@ -1890,43 +1892,29 @@ function renderClientPanel(client) {
   ensureClientContacts(client);
   const contacts = client.contacts;
 
-  const contactCard = (c, i) => `
-    <div class="contact-card">
-      <div class="contact-card-head">
-        <span class="contact-badge">${i === 0 ? 'איש קשר ראשי' : 'איש קשר'}</span>
-        ${i > 0 ? `<button class="btn-contact-del" onclick="deleteClientContact(${i})" title="מחק איש קשר">✕</button>` : ''}
+  if (!S.clientTab) S.clientTab = 'company';
+
+  const contactCell = (c, i, field) => `
+    <div class="field-value editable contact-cell" data-contact-idx="${i}" data-contact-field="${field}" data-type="text">
+      ${c[field] ? escHtml(c[field]) : '<span class="placeholder">—</span>'}
+    </div>`;
+
+  const contactRow = (c, i) => `
+    <div class="contact-row">
+      <div class="contact-row-name">
+        ${contactCell(c, i, 'name')}
+        ${i === 0 ? '<span class="contact-badge">ראשי</span>' : ''}
       </div>
-      <div class="field-grid">
-        <div class="field-item">
-          <span class="field-label">שם איש קשר</span>
-          <div class="field-value editable" data-contact-idx="${i}" data-contact-field="name" data-type="text">
-            ${c.name ? escHtml(c.name) : '<span class="placeholder">—</span>'}
-          </div>
-        </div>
-        <div class="field-item">
-          <span class="field-label">תפקיד</span>
-          <div class="field-value editable" data-contact-idx="${i}" data-contact-field="role" data-type="text">
-            ${c.role ? escHtml(c.role) : '<span class="placeholder">—</span>'}
-          </div>
-        </div>
-        <div class="field-item">
-          <span class="field-label">טלפון</span>
-          <div class="field-value editable" data-contact-idx="${i}" data-contact-field="phone" data-type="text">
-            ${c.phone ? escHtml(c.phone) : '<span class="placeholder">—</span>'}
-          </div>
-        </div>
-        <div class="field-item">
-          <span class="field-label">אימייל</span>
-          <div class="field-value editable" data-contact-idx="${i}" data-contact-field="email" data-type="text">
-            ${c.email ? escHtml(c.email) : '<span class="placeholder">—</span>'}
-          </div>
-        </div>
+      ${contactCell(c, i, 'role')}
+      ${contactCell(c, i, 'phone')}
+      ${contactCell(c, i, 'email')}
+      <div class="contact-row-actions">
+        ${i > 0 ? `<button class="btn-contact-del" onclick="deleteClientContact(${i})" title="מחק איש קשר">✕</button>` : ''}
       </div>
     </div>`;
 
-  body.innerHTML = `
+  const companyTab = `
     <div class="panel-section">
-      <div class="section-title">פרטי חברה</div>
       <div class="field-grid">
         <div class="field-item full">
           <span class="field-label">שם חברה / לקוח</span>
@@ -1951,18 +1939,35 @@ function renderClientPanel(client) {
           </div>
         </div>
       </div>
-    </div>
+    </div>`;
 
+  const contactsTab = `
     <div class="panel-section">
       <div class="section-title-row">
-        <span class="section-title">אנשי קשר</span>
+        <span class="section-title">אנשי קשר (${contacts.length})</span>
         <button class="btn-gold btn-sm" onclick="addClientContact()">+ איש קשר</button>
       </div>
-      <div class="contacts-list">
-        ${contacts.map((c, i) => contactCard(c, i)).join('')}
+      <div class="contacts-table">
+        <div class="contact-row contact-row-head">
+          <div>שם</div><div>תפקיד</div><div>טלפון</div><div>מייל</div><div></div>
+        </div>
+        ${contacts.map((c, i) => contactRow(c, i)).join('')}
       </div>
     </div>`;
 
+  body.innerHTML = `
+    <div class="panel-tabs client-tabs">
+      <button class="panel-tab-btn${S.clientTab === 'company'  ? ' active' : ''}" data-ctab="company">פרטי חברה</button>
+      <button class="panel-tab-btn${S.clientTab === 'contacts' ? ' active' : ''}" data-ctab="contacts">אנשי קשר (${contacts.length})</button>
+    </div>
+    ${S.clientTab === 'contacts' ? contactsTab : companyTab}`;
+
+  body.querySelectorAll('.client-tabs .panel-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      S.clientTab = btn.dataset.ctab;
+      renderClientPanel(client);
+    });
+  });
   body.querySelectorAll('.field-value.editable[data-cfield]').forEach(el => {
     el.addEventListener('click', () => startClientInlineEdit(el, client));
   });
@@ -1995,14 +2000,22 @@ function addClientContact() {
   renderClientPanel(client);   // in-memory; persists when a field is edited
 }
 
-async function deleteClientContact(idx) {
+function deleteClientContact(idx) {
   const client = S.clients.find(c => c.id === S.panelClientId);
   if (!client || idx <= 0) return;   // never delete the primary contact
-  ensureClientContacts(client);
-  client.contacts.splice(idx, 1);
-  syncClientPrimary(client);
-  const ok = await saveClientData(client);
-  if (ok) { renderClientPanel(client); renderClientsList(); toast('איש קשר נמחק', 'success'); }
+  openConfirmModal({
+    title: 'מחיקת איש קשר',
+    message: 'למחוק את איש הקשר הזה?',
+    btnLabel: 'מחק', btnClass: 'btn-danger',
+    action: async () => {
+      ensureClientContacts(client);
+      if (idx <= 0 || idx >= client.contacts.length) return;
+      client.contacts.splice(idx, 1);
+      syncClientPrimary(client);
+      const ok = await saveClientData(client);
+      if (ok) { renderClientPanel(client); renderClientsList(); toast('איש קשר נמחק', 'success'); }
+    }
+  });
 }
 
 function startContactInlineEdit(el, client, idx, field) {
