@@ -55,6 +55,9 @@ const S = {
   panelIdeaId:          null,
   panelClientId:        null,
   clientTab:            'company',   // 'company' | 'contacts' — inner tab of the client panel
+  // Cache-first flags: true after a wing's data loaded successfully once this session.
+  // An empty-but-successful fetch still counts as loaded; a failed fetch does not.
+  loaded: { clients: false, ideas: false, manufacturers: false, products: false },
   panelManufacturerId:  null,
   currentWing:          null,
   productsSubTab:       'manufacturers',
@@ -171,7 +174,7 @@ async function loadAll() {
 
     // Load products in background — needed for manufacturer price-table autocomplete.
     // Non-blocking: failure does not affect main data load.
-    apiCall('getProducts').then(r => { S.products = r.products || []; }).catch(() => {});
+    apiCall('getProducts').then(r => { S.products = r.products || []; S.loaded.products = true; }).catch(() => {});
 
     renderAll();
   } catch (e) {
@@ -1845,10 +1848,14 @@ async function loadAndRenderClientsWing() {
       <p class="text-muted text-sm">טוען…</p>
     </div>`;
 
+  // Cache-first: already loaded this session — render local state, no spinner, no refetch
+  if (S.loaded.clients) { renderClientsList(); return; }
+
   showSpinner(true);
   try {
     const result = await apiCall('getClients');
     S.clients = result.clients || [];
+    S.loaded.clients = true;
     renderClientsList();
   } catch(e) {
     toast('שגיאה בטעינת לקוחות: ' + e.message, 'error');
@@ -2158,10 +2165,14 @@ async function loadAndRenderIdeasWing() {
       <p class="text-muted text-sm">טוען…</p>
     </div>`;
 
+  // Cache-first: already loaded this session — render local state, no spinner, no refetch
+  if (S.loaded.ideas) { renderIdeasList(); return; }
+
   showSpinner(true);
   try {
     const result = await apiCall('getIdeas');
     S.ideas = result.ideas || [];
+    S.loaded.ideas = true;
     renderIdeasList();
   } catch(e) {
     toast('שגיאה בטעינת רעיונות: ' + e.message, 'error');
@@ -2474,10 +2485,13 @@ function switchProductsTab(tab) {
 async function loadManufacturers() {
   const c = document.getElementById('manufacturers-list-container');
   if (!c) return;
+  // Cache-first: already loaded this session — render local state, no refetch
+  if (S.loaded.manufacturers) { renderManufacturersList(); return; }
   c.innerHTML = '<div style="padding:1rem;color:var(--text-muted)">טוען...</div>';
   try {
     const result = await apiCall('getManufacturers');
     S.manufacturers = result.manufacturers || [];
+    S.loaded.manufacturers = true;
     renderManufacturersList();
   } catch(e) {
     c.innerHTML = `<p style="padding:1rem;color:var(--text-muted)">שגיאה: ${escHtml(e.message)}</p>`;
@@ -3078,9 +3092,12 @@ function renderProductsWing() {
 async function loadProducts() {
   const c = document.getElementById('products-list-container');
   if (!c) return;
+  // Cache-first: already loaded this session — render local state, no refetch
+  if (S.loaded.products) { renderProductsList(); return; }
   try {
     const r = await apiCall('getProducts');
     S.products = r.products || [];
+    S.loaded.products = true;
     renderProductsList();
   } catch(e) {
     if (c) c.innerHTML = '<p style="padding:1rem;color:var(--text-muted)">' + escHtml(e.message) + '</p>';
