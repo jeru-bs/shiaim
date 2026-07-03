@@ -2109,20 +2109,29 @@ async function deleteClientConfirm() {
 }
 
 function openAddClientModal() {
-  document.getElementById('add-client-name').value  = '';
-  document.getElementById('add-client-phone').value = '';
-  document.getElementById('add-client-email').value = '';
+  ['add-client-name', 'add-client-company-id', 'add-client-address', 'add-client-notes',
+   'add-client-contact-name', 'add-client-contact-role', 'add-client-phone', 'add-client-email']
+    .forEach(id => { document.getElementById(id).value = ''; });
   openModalEl(document.getElementById('add-client-modal'));
 }
 
 async function submitAddClient() {
   const name = document.getElementById('add-client-name').value.trim();
-  if (!name) { toast('שם הלקוח הוא שדה חובה', 'error'); return; }
+  if (!name) { toast('שם החברה / הלקוח הוא שדה חובה', 'error'); return; }
+  const primary = {
+    name:  document.getElementById('add-client-contact-name').value.trim(),
+    role:  document.getElementById('add-client-contact-role').value.trim(),
+    phone: document.getElementById('add-client-phone').value.trim(),
+    email: document.getElementById('add-client-email').value.trim()
+  };
   const client = {
     id: uid(), name,
-    phone:   document.getElementById('add-client-phone').value.trim(),
-    email:   document.getElementById('add-client-email').value.trim(),
-    address: '', notes: '',
+    companyId: document.getElementById('add-client-company-id').value.trim(),
+    address:   document.getElementById('add-client-address').value.trim(),
+    notes:     document.getElementById('add-client-notes').value.trim(),
+    contacts:  [primary],
+    phone: primary.phone,   // legacy mirror of the primary contact
+    email: primary.email,
     createdAt: new Date().toISOString()
   };
   const ok = await saveClientData(client);
@@ -2130,6 +2139,7 @@ async function submitAddClient() {
     closeModalEl(document.getElementById('add-client-modal'));
     renderClientsList();
     toast('לקוח נוסף ✓', 'success');
+    openClientPanel(client.id);
   }
 }
 

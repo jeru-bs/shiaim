@@ -1351,6 +1351,17 @@ a { text-decoration: none; color: inherit; }
 }
 .section-title-row .section-title { margin-bottom: 0; flex: 1; }
 
+/* ── Add-Client Modal sections (Pulse C2) ── */
+.modal-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0.9rem 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.modal-section-title:first-child { margin-top: 0; }
+
 /* ── Client Contacts (Pulse C1.1: inner tabs + compact table) ── */
 .client-tabs { position: sticky; top: 0; z-index: 2; }
 .client-tabs .panel-tab-btn { padding: 0.55rem 1rem; font-size: 0.82rem; }

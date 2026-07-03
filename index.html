@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="שיאים">
   <title>התנהלות שוטפת — שיאים</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="app.css?v=61">
+  <link rel="stylesheet" href="app.css?v=62">
 </head>
 <body>
 
@@ -349,11 +349,35 @@
       <button class="btn-modal-close">✕</button>
     </div>
     <div class="modal-body">
+      <div class="modal-section-title">פרטי חברה</div>
       <div class="form-group">
-        <label class="form-label">שם הלקוח *</label>
-        <input type="text" id="add-client-name" class="form-input" placeholder="שם הלקוח" autocomplete="off" />
+        <label class="form-label">שם חברה / לקוח *</label>
+        <input type="text" id="add-client-name" class="form-input" placeholder="שם החברה או הלקוח" autocomplete="off" />
       </div>
       <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">ח.פ.</label>
+          <input type="text" id="add-client-company-id" class="form-input" placeholder="מספר ח.פ." autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">כתובת משרד</label>
+          <input type="text" id="add-client-address" class="form-input" placeholder="כתובת" autocomplete="off" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">הערות</label>
+        <input type="text" id="add-client-notes" class="form-input" placeholder="הערות" autocomplete="off" />
+      </div>
+      <div class="modal-section-title">איש קשר ראשי</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">שם איש קשר</label>
+          <input type="text" id="add-client-contact-name" class="form-input" placeholder="שם" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">תפקיד</label>
+          <input type="text" id="add-client-contact-role" class="form-input" placeholder="תפקיד" autocomplete="off" />
+        </div>
         <div class="form-group">
           <label class="form-label">טלפון</label>
           <input type="text" id="add-client-phone" class="form-input" placeholder="מספר טלפון" autocomplete="off" />
@@ -468,6 +492,6 @@
   </div>
 </div>
 
-<script src="app.js?v=61"></script>
+<script src="app.js?v=62"></script>
 </body>
 </html>
