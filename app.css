@@ -421,10 +421,23 @@ a { text-decoration: none; color: inherit; }
   font-weight: 400;
 }
 .kpi-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.kpi-dot.ink     { background: var(--ink); opacity: 0.55; }
-.kpi-dot.warning { background: var(--warning); }
-.kpi-dot.danger  { background: var(--danger); }
-.kpi-dot.gold    { background: var(--gold); }
+
+/* Per-card muted tint identity — distinguishable at a glance, still one family */
+.kpi-card.kpi-ink   { background: #F3F5F9; border-color: #E0E5EE; }
+.kpi-card.kpi-ink   .kpi-dot   { background: var(--ink); opacity: 0.55; }
+.kpi-card.kpi-ink   .kpi-label { color: #4E5873; }
+
+.kpi-card.kpi-amber { background: #FAF5EA; border-color: #EEE3C9; }
+.kpi-card.kpi-amber .kpi-dot   { background: var(--warning); }
+.kpi-card.kpi-amber .kpi-label { color: #8A6420; }
+
+.kpi-card.kpi-red   { background: #FAF0EF; border-color: #EFDAD7; }
+.kpi-card.kpi-red   .kpi-dot   { background: var(--danger); }
+.kpi-card.kpi-red   .kpi-label { color: #96453F; }
+
+.kpi-card.kpi-olive { background: #F5F5EC; border-color: #E5E5D0; }
+.kpi-card.kpi-olive .kpi-dot   { background: #8A8B4E; }
+.kpi-card.kpi-olive .kpi-label { color: #6F7040; }
 
 @media (max-width: 760px) {
   .kpi-strip { grid-template-columns: 1fr 1fr; }
