@@ -795,9 +795,11 @@ a { text-decoration: none; color: inherit; }
   color: var(--ink-800);
   font-size: 0.9rem;
   font-weight: 600;
+  line-height: 1;              /* keeps Hebrew glyphs optically centered */
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  user-select: none;
 }
 .row-name-stack {
   display: flex;
@@ -836,7 +838,7 @@ a { text-decoration: none; color: inherit; }
   border-radius: 2px;
   background: var(--border);
 }
-.umeter-bar.on { background: #6B7590; }
+.umeter-bar.on { background: #46547E; }
 .umeter-label { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
 
 /* Deadline: date + relative hint, color only when it matters (5B.2) */
@@ -847,10 +849,22 @@ a { text-decoration: none; color: inherit; }
 .deadline-cell.overdue .deadline-rel { color: var(--danger);  font-weight: 600; }
 .deadline-cell.overdue .deadline-date { color: var(--danger); }
 
-/* Info column: icon + count pairs (5B.2) */
-.ind-pair { display: inline-flex; align-items: center; gap: 3px; color: var(--text-muted); }
+/* Info column: icon + count pairs, aligned and evenly spaced (5B.3) */
+.row-indicators { gap: 0.6rem; }
+.ind-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 26px;
+  color: var(--text-muted);
+}
 .ind-pair .ui-icon { font-size: 0.85rem; }
-.ind-count { font-size: 0.72rem; color: var(--text-sec); font-variant-numeric: tabular-nums; }
+.ind-count {
+  font-size: 0.72rem;
+  color: var(--text-sec);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
 .row-client {
   font-size: 0.76rem;
   color: var(--text-muted);
@@ -1519,20 +1533,49 @@ a { text-decoration: none; color: inherit; }
 .panel-tab-content::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 2px; }
 
 /* ── Design Sub-rows (main list) ── */
-/* Design detail row — a quiet indented expandable row, not a gray patch (5A.3) */
-.design-subrow {
+/* Design detail lane — children rows visually attached to their project (5B.3) */
+.design-lane {
+  position: relative;
   background: var(--surface);
-  border: none;
   border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+/* Vertical connector under the avatar column */
+.design-lane::before {
+  content: '';
+  position: absolute;
+  right: calc(1.35rem + 15px);
+  top: 0;
+  bottom: 14px;
+  width: 1px;
+  background: var(--border);
+}
+/* The project row above a lane hands its divider to the lane */
+.project-row:has(+ .design-lane) { border-bottom: none; }
+
+.design-subrow {
+  position: relative;
+  background: transparent;
+  border: none;
   border-radius: 0;
   margin: 0;
-  padding: 0.35rem 2.6rem 0.35rem 1.35rem;
-  min-height: 34px;
+  padding: 0 3.3rem 0 1.35rem;
+  min-height: 32px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   transition: background var(--transition);
+}
+/* Horizontal tick from the connector into the row */
+.design-subrow::before {
+  content: '';
+  position: absolute;
+  right: calc(1.35rem + 15px);
+  top: 50%;
+  width: 14px;
+  height: 1px;
+  background: var(--border);
 }
 .design-subrow:hover { background: var(--surface-2); }
 .design-sub-icon { font-size: 0.75rem; color: var(--text-muted); flex-shrink: 0; opacity: 0.8; }
@@ -1545,15 +1588,17 @@ a { text-decoration: none; color: inherit; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Design status: tiny dot + quiet text, no chip (5B.3) */
 .design-sub-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 0.7rem;
   color: var(--text-sec);
-  background: var(--surface-2);
-  padding: 1px 8px;
-  border-radius: var(--radius-sm);
   white-space: nowrap;
   flex-shrink: 0;
 }
+.dstatus-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); flex-shrink: 0; }
 
 /* ── Project Files ── */
 .section-title-row {

@@ -549,12 +549,15 @@ function renderProjectRow(p) {
        </span>`
     : '';
 
-  const subRows = (p.designs || []).map((d, i) => `
-    <div class="design-subrow" data-project-id="${escHtml(p.id)}" data-design-idx="${i}">
-      <span class="design-sub-icon ui-icon">${ICONS.design}</span>
-      <span class="design-sub-name">${escHtml(d.name || `עיצוב ${i+1}`)}</span>
-      ${d.status ? `<span class="design-sub-status">${escHtml(d.status)}</span>` : ''}
-    </div>`).join('');
+  const subRows = (p.designs || []).length ? `
+    <div class="design-lane">
+      ${(p.designs || []).map((d, i) => `
+      <div class="design-subrow" data-project-id="${escHtml(p.id)}" data-design-idx="${i}">
+        <span class="design-sub-icon ui-icon">${ICONS.design}</span>
+        <span class="design-sub-name">${escHtml(d.name || `עיצוב ${i+1}`)}</span>
+        ${d.status ? `<span class="design-sub-status"><span class="dstatus-dot"></span>${escHtml(d.status)}</span>` : ''}
+      </div>`).join('')}
+    </div>` : '';
 
   return `
     <div class="project-row" data-id="${escHtml(p.id)}" data-priority="${p.priority || 0}">
