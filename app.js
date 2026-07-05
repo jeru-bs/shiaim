@@ -68,6 +68,28 @@ const S = {
 };
 
 // ================================================================
+// UI ICONS (Pulse 4D.1) — minimal internal icon set, inline SVG only.
+// Monochrome outline, inherits color via currentColor, sized by font-size (1em).
+// ================================================================
+const ICON_SVG = (paths) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+
+const ICONS = {
+  projects: ICON_SVG('<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 11h6M9 15h6"/>'),
+  clients:  ICON_SVG('<circle cx="12" cy="8" r="3.5"/><path d="M5 20.5a7 7 0 0 1 14 0"/>'),
+  ideas:    ICON_SVG('<path d="M12 3a6 6 0 0 0-3.5 10.9c.8.6 1.2 1.3 1.4 2.1h4.2c.2-.8.6-1.5 1.4-2.1A6 6 0 0 0 12 3z"/><path d="M10 19h4M10.5 21.5h3"/>'),
+  products: ICON_SVG('<path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/>'),
+  settings: ICON_SVG('<path d="M4 7h10M18 7h2M4 12h2M10 12h10M4 17h10M18 17h2"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="17" r="2"/>'),
+  bell:     ICON_SVG('<path d="M18 10a6 6 0 1 0-12 0c0 4.5-1.8 5.8-1.8 6.8h15.6c0-1-1.8-2.3-1.8-6.8z"/><path d="M10.2 20a2 2 0 0 0 3.6 0"/>'),
+  key:      ICON_SVG('<circle cx="8" cy="16" r="3.5"/><path d="M10.5 13.5L20 4M16.5 7.5L19 10M13.5 10.5l1.8 1.8"/>'),
+  factory:  ICON_SVG('<path d="M3 21V9.5l5.5 3.2V9.5l5.5 3.2V5.5H21V21H3z"/><path d="M7 17h2M12 17h2M17 17h0.01"/>'),
+};
+
+function icon(name, cls = '') {
+  return `<span class="ui-icon ${cls}" aria-hidden="true">${ICONS[name] || ''}</span>`;
+}
+
+// ================================================================
 // UTILITIES
 // ================================================================
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -1841,7 +1863,7 @@ async function loadAndRenderClientsWing() {
   wc.innerHTML = `
     <div class="wing-header">
       <button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>
-      <h2 class="wing-title">👤 לקוחות</h2>
+      <h2 class="wing-title">${icon('clients')} לקוחות</h2>
       <button class="btn-gold btn-sm" onclick="openAddClientModal()">+ לקוח</button>
     </div>
     <div class="clients-list" id="clients-list">
@@ -2158,7 +2180,7 @@ async function loadAndRenderIdeasWing() {
   wc.innerHTML = `
     <div class="wing-header">
       <button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>
-      <h2 class="wing-title">💡 רעיונות</h2>
+      <h2 class="wing-title">${icon('ideas')} רעיונות</h2>
       <button class="btn-gold btn-sm" onclick="openAddIdeaModal()">+ רעיון</button>
     </div>
     <div class="ideas-list" id="ideas-list">
@@ -3055,12 +3077,12 @@ function renderProductsWing() {
     wc.innerHTML =
       '<div class="wing-header">' +
       '<button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>' +
-      '<h2 class="wing-title">📦 מוצרים וספקים</h2></div>' +
+      '<h2 class="wing-title">' + icon('products') + ' מוצרים וספקים</h2></div>' +
       '<div class="wing-tiles">' +
       '<button class="wing-tile" onclick="switchProductsTab(\'manufacturers\')">' +
-      '<span class="wing-tile-icon">🏭</span><span class="wing-tile-label">יצרנים</span></button>' +
+      '<span class="wing-tile-icon ui-icon">' + ICONS.factory + '</span><span class="wing-tile-label">יצרנים</span></button>' +
       '<button class="wing-tile" onclick="switchProductsTab(\'products\')">' +
-      '<span class="wing-tile-icon">📦</span><span class="wing-tile-label">מוצרים</span></button>' +
+      '<span class="wing-tile-icon ui-icon">' + ICONS.products + '</span><span class="wing-tile-label">מוצרים</span></button>' +
       '</div>';
     return;
   }
@@ -3068,7 +3090,7 @@ function renderProductsWing() {
     wc.innerHTML =
       '<div class="wing-header">' +
       '<button class="btn-wing-back" onclick="switchProductsTab(null)">← חזרה</button>' +
-      '<h2 class="wing-title">🏭 יצרנים</h2>' +
+      '<h2 class="wing-title">' + icon('factory') + ' יצרנים</h2>' +
       '<button class="btn-add-wing" onclick="openModalEl(document.getElementById(\'add-manufacturer-modal\'))">+ הוסף</button>' +
       '</div>' +
       '<div class="wing-list-container" id="manufacturers-list-container">' +
@@ -3080,7 +3102,7 @@ function renderProductsWing() {
     wc.innerHTML =
       '<div class="wing-header">' +
       '<button class="btn-wing-back" onclick="switchProductsTab(null)">← חזרה</button>' +
-      '<h2 class="wing-title">📦 מוצרים</h2>' +
+      '<h2 class="wing-title">' + icon('products') + ' מוצרים</h2>' +
       '<button class="btn-add-wing" onclick="openAddProductModal()">+ הוסף מוצר</button>' +
       '</div>' +
       '<div class="wing-list-container" id="products-list-container">' +

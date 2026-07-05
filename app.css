@@ -1351,6 +1351,17 @@ a { text-decoration: none; color: inherit; }
 }
 .section-title-row .section-title { margin-bottom: 0; flex: 1; }
 
+/* ── UI icon system (Pulse 4D.1) ── */
+.ui-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
+}
+.ui-icon svg { width: 1em; height: 1em; }
+.wing-title .ui-icon { font-size: 0.85em; color: var(--navy); }
+
 /* ── Add-Client Modal sections (Pulse C2) ── */
 .modal-section-title {
   font-size: 0.78rem;
