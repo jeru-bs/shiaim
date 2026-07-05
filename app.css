@@ -44,7 +44,7 @@
   --radius:      8px;
   --radius-lg:   12px;
 
-  --ptable-cols: minmax(0,2.3fr) minmax(110px,1.5fr) 58px 92px 104px 54px;
+  --ptable-cols: minmax(0,2.2fr) minmax(110px,1.3fr) 58px 118px 110px 92px;
   --focus-ring:  0 0 0 3px rgba(201,168,76,0.16);
   --transition:  0.15s ease;
 
@@ -769,7 +769,7 @@ a { text-decoration: none; color: inherit; }
   grid-template-columns: var(--ptable-cols);
   align-items: center;
   gap: 0.75rem;
-  min-height: 52px;
+  min-height: 58px;
   background: var(--surface);
   border: none;
   border-bottom: 1px solid var(--divider);
@@ -784,7 +784,73 @@ a { text-decoration: none; color: inherit; }
 }
 .project-row:hover { background: var(--surface-2); }
 .pcol { min-width: 0; display: flex; align-items: center; }
-.pcol-name { flex-direction: column; align-items: flex-start; gap: 1px; }
+
+/* Name cell: avatar tile + two-line stack (5B.2) */
+.pcol-name { gap: 0.65rem; }
+.row-avatar {
+  width: 32px; height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  background: #EEF1F7;
+  color: var(--ink-800);
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.row-name-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+/* Status: semantic dot + plain text — no sticker chip (5B.2) */
+.status-cell { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--border-strong); }
+.status-text {
+  font-size: 0.8rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.status-cell[data-stage="0"] .status-dot { background: #8A93A8; }
+.status-cell[data-stage="1"] .status-dot { background: #4A6DA8; }
+.status-cell[data-stage="2"] .status-dot { background: #2E8578; }
+.status-cell[data-stage="3"] .status-dot { background: #C08A2D; }
+.status-cell[data-stage="4"] .status-dot { background: #7A68C4; }
+.status-cell[data-stage="5"] .status-dot { background: #2E9459; }
+.status-cell[data-stage="6"] .status-dot { background: #B85A8B; }
+.status-cell.completed .status-dot { background: var(--success); }
+
+/* Type as quiet metadata, not a chip (5B.2) */
+.type-text { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
+
+/* Urgency meter: 5 tiny segments + small label (5B.2) */
+.umeter { display: inline-flex; align-items: center; gap: 7px; }
+.umeter-bars { display: inline-flex; align-items: center; gap: 2px; }
+.umeter-bar {
+  width: 4px; height: 12px;
+  border-radius: 2px;
+  background: var(--border);
+}
+.umeter-bar.on { background: #6B7590; }
+.umeter-label { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
+
+/* Deadline: date + relative hint, color only when it matters (5B.2) */
+.deadline-cell { display: inline-flex; flex-direction: column; gap: 0; min-width: 0; }
+.deadline-date { font-size: 0.8rem; color: var(--text); font-variant-numeric: tabular-nums; }
+.deadline-rel  { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
+.deadline-cell.soon    .deadline-rel { color: var(--warning); font-weight: 600; }
+.deadline-cell.overdue .deadline-rel { color: var(--danger);  font-weight: 600; }
+.deadline-cell.overdue .deadline-date { color: var(--danger); }
+
+/* Info column: icon + count pairs (5B.2) */
+.ind-pair { display: inline-flex; align-items: center; gap: 3px; color: var(--text-muted); }
+.ind-pair .ui-icon { font-size: 0.85rem; }
+.ind-count { font-size: 0.72rem; color: var(--text-sec); font-variant-numeric: tabular-nums; }
 .row-client {
   font-size: 0.76rem;
   color: var(--text-muted);

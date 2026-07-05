@@ -533,22 +533,19 @@ function renderProjectRow(p) {
   const designsCount = (p.designs       || []).length;
   const ds           = deadlineStatus(p.deadline);
 
-  const starsHtml = [1,2,3,4,5].map(n =>
-    `<span class="priority-star ${n <= (p.priority || 0) ? 'filled' : 'empty'}">★</span>`
-  ).join('');
-
   const indicators = [
-    notesCount   ? `<span class="indicator notes ui-icon"   title="${notesCount} הערות">${ICONS.note}</span>` : '',
-    infoCount    ? `<span class="indicator info ui-icon"    title="${infoCount} מידע חשוב">${ICONS.info}</span>` : '',
-    designsCount ? `<span class="indicator designs ui-icon" title="${designsCount} עיצובים">${ICONS.design}</span>` : '',
+    notesCount   ? `<span class="ind-pair" title="${notesCount} הערות">${icon('note')}<span class="ind-count">${notesCount}</span></span>` : '',
+    infoCount    ? `<span class="ind-pair" title="${infoCount} מידע חשוב">${icon('info')}<span class="ind-count">${infoCount}</span></span>` : '',
+    designsCount ? `<span class="ind-pair" title="${designsCount} עיצובים">${icon('design')}<span class="ind-count">${designsCount}</span></span>` : '',
   ].filter(Boolean).join('');
 
   const typeLabel = p.type === 'client' ? 'לקוח' : 'משרד';
-  const typeClass = p.type === 'client' ? 'client' : 'office';
 
+  const rel = p.deadline ? deadlineRelText(p.deadline) : '';
   const deadlineHtml = p.deadline
-    ? `<span class="deadline-chip ${ds}" title="${p.deadline}">
-         ${icon(ds === 'overdue' ? 'alert' : ds === 'soon' ? 'clock' : 'calendar', 'deadline-ico')} ${fmt.date(p.deadline)}
+    ? `<span class="deadline-cell ${ds}" title="${p.deadline}">
+         <span class="deadline-date">${fmt.date(p.deadline)}</span>
+         ${rel ? `<span class="deadline-rel">${rel}</span>` : ''}
        </span>`
     : '';
 
@@ -562,18 +559,57 @@ function renderProjectRow(p) {
   return `
     <div class="project-row" data-id="${escHtml(p.id)}" data-priority="${p.priority || 0}">
       <div class="pcol pcol-name">
-        <span class="row-name">${escHtml(p.name)}</span>
-        ${p.client ? `<span class="row-client">${escHtml(p.client)}</span>` : ''}
+        <span class="row-avatar">${projectInitial(p.name)}</span>
+        <span class="row-name-stack">
+          <span class="row-name">${escHtml(p.name)}</span>
+          ${p.client ? `<span class="row-client">${escHtml(p.client)}</span>` : ''}
+        </span>
       </div>
       <div class="pcol pcol-status">
-        <span class="status-badge ${p.completed ? 'completed' : ''}" data-stage="${S.statuses.indexOf(p.status)}">${escHtml(p.status || 'ללא סטטוס')}</span>
+        <span class="status-cell ${p.completed ? 'completed' : ''}" data-stage="${S.statuses.indexOf(p.status)}">
+          <span class="status-dot"></span><span class="status-text">${escHtml(p.status || 'ללא סטטוס')}</span>
+        </span>
       </div>
-      <div class="pcol pcol-type"><span class="type-badge ${typeClass}">${typeLabel}</span></div>
-      <div class="pcol pcol-priority"><div class="row-priority">${starsHtml}</div></div>
+      <div class="pcol pcol-type"><span class="type-text">${typeLabel}</span></div>
+      <div class="pcol pcol-priority">${urgencyMeter(p.priority)}</div>
       <div class="pcol pcol-deadline">${deadlineHtml}</div>
       <div class="pcol pcol-ind"><div class="row-indicators">${indicators}</div></div>
     </div>
     ${subRows}`;
+}
+
+// ── Project-row helpers (5B.2) ──────────────────────────────────
+
+// Visual anchor: first character of the project name on a quiet tile
+function projectInitial(name) {
+  const t = (name || '').trim();
+  return t ? escHtml(t.charAt(0)) : '·';
+}
+
+// Mature urgency meter: 5 tiny segments + a small label, instead of stars
+function urgencyMeter(priority) {
+  const lvl = Math.max(0, Math.min(5, priority || 0));
+  const label = lvl >= 4 ? 'גבוהה' : lvl >= 3 ? 'בינונית' : lvl >= 1 ? 'נמוכה' : '';
+  const bars = [1,2,3,4,5].map(n =>
+    `<span class="umeter-bar${n <= lvl ? ' on' : ''}"></span>`).join('');
+  return `<span class="umeter" title="דחיפות ${lvl}/5">
+    <span class="umeter-bars">${bars}</span>
+    ${label ? `<span class="umeter-label">${label}</span>` : ''}
+  </span>`;
+}
+
+// Relative deadline text at day granularity ("היום", "בעוד 3 ימים", "באיחור יומיים")
+function deadlineRelText(deadline) {
+  const d = new Date(deadline);
+  if (isNaN(d)) return '';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dd = new Date(d);   dd.setHours(0, 0, 0, 0);
+  const days = Math.round((dd - today) / 86400000);
+  if (days === 0)  return 'היום';
+  if (days === 1)  return 'מחר';
+  if (days > 1)    return `בעוד ${days} ימים`;
+  if (days === -1) return 'באיחור יום';
+  return `באיחור ${-days} ימים`;
 }
 
 function updateChangesBadge() {
