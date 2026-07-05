@@ -1583,7 +1583,8 @@ a { text-decoration: none; color: inherit; }
   font-size: 0.78rem;
   font-weight: 400;
   color: var(--text-sec);
-  flex: 1;
+  flex: 0 1 auto;   /* hug the name so its status sits right next to it (5B.3 fix) */
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
