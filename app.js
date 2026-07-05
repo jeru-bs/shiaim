@@ -457,9 +457,33 @@ function getFilteredProjects() {
   });
 }
 
+// KPI strip (5B.1) — computed client-side from S.projects, no API calls.
+// active: not completed | soon: deadline within 7 days | overdue: deadline
+// passed & not completed | design: active projects having designs.
+function updateKpiStrip() {
+  const strip = document.getElementById('kpi-strip');
+  if (!strip) return;
+  const now = Date.now(), WEEK = 7 * 86400000;
+  const active = S.projects.filter(p => !p.completed);
+  const soon = active.filter(p => {
+    if (!p.deadline) return false;
+    const diff = new Date(p.deadline).getTime() - now;
+    return diff > 0 && diff <= WEEK;
+  });
+  const overdue = active.filter(p =>
+    p.deadline && new Date(p.deadline).getTime() < now);
+  const inDesign = active.filter(p => (p.designs || []).length > 0);
+  document.getElementById('kpi-active').textContent  = active.length;
+  document.getElementById('kpi-soon').textContent    = soon.length;
+  document.getElementById('kpi-overdue').textContent = overdue.length;
+  document.getElementById('kpi-design').textContent  = inDesign.length;
+}
+
 function renderProjectList() {
   const list = document.getElementById('project-list');
   const projects = getFilteredProjects();
+
+  updateKpiStrip();
 
   // Update section header
   const label = S.view === 'active' ? 'פרויקטים פעילים' : 'פרויקטים שהסתיימו';
@@ -1827,6 +1851,7 @@ function openWing(name) {
   const projectList    = document.getElementById('project-list');
   const filtersBar     = document.getElementById('filters-bar');
   const sectionBar     = document.getElementById('section-header-bar');
+  const kpiStrip       = document.getElementById('kpi-strip');
   const fab            = document.getElementById('add-btn');
 
   // Sidebar active-state highlight (Pulse 4B) — visual only
@@ -1839,6 +1864,7 @@ function openWing(name) {
     projectList.classList.remove('hidden');
     filtersBar.classList.remove('hidden');
     sectionBar.classList.remove('hidden');
+    if (kpiStrip) kpiStrip.classList.remove('hidden');
     fab.classList.remove('hidden');
     return;
   }
@@ -1848,6 +1874,7 @@ function openWing(name) {
   projectList.classList.add('hidden');
   filtersBar.classList.add('hidden');
   sectionBar.classList.add('hidden');
+  if (kpiStrip) kpiStrip.classList.add('hidden');
   fab.classList.add('hidden');
 
   if      (name === 'clients')  loadAndRenderClientsWing();

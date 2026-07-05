@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="שיאים">
   <title>התנהלות שוטפת — שיאים</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="app.css?v=69">
+  <link rel="stylesheet" href="app.css?v=70">
 </head>
 <body>
 
@@ -112,25 +112,37 @@
     </div>
   </header>
 
-  <!-- Main content area (Pulse 4C.2) -->
+  <!-- Main content area (Pulse 4C.2 / 5B.1 dashboard composition) -->
   <div class="workspace-body">
-  <div class="content-panel">
 
-  <!-- View Toggle + Section Label -->
-  <div id="section-header-bar" class="dashboard-header">
-    <div class="section-header">
-      <span id="section-label" class="section-label">פרויקטים פעילים</span>
-      <span id="section-count" class="section-count">0 פרויקטים</span>
+  <!-- Page Header — on the workspace background, outside the data panel -->
+  <div id="section-header-bar" class="page-header">
+    <div class="page-header-text">
+      <span id="section-label" class="page-title">פרויקטים פעילים</span>
+      <span id="section-count" class="page-meta">0 פרויקטים</span>
     </div>
-    <div class="dashboard-actions">
+    <div class="page-actions">
       <button id="view-toggle" class="btn-view-toggle">הסתיימו</button>
       <button id="add-btn-header" class="btn-add-header" onclick="openAddModal()">+ פרויקט</button>
     </div>
   </div>
 
-  <!-- Filters -->
+  <!-- KPI Strip (5B.1) — client-side numbers from S.projects -->
+  <div id="kpi-strip" class="kpi-strip">
+    <div class="kpi-card"><span class="kpi-value" id="kpi-active">—</span><span class="kpi-label"><span class="kpi-dot ink"></span>פעילים</span></div>
+    <div class="kpi-card"><span class="kpi-value" id="kpi-soon">—</span><span class="kpi-label"><span class="kpi-dot warning"></span>קרובים לדדליין</span></div>
+    <div class="kpi-card"><span class="kpi-value" id="kpi-overdue">—</span><span class="kpi-label"><span class="kpi-dot danger"></span>באיחור</span></div>
+    <div class="kpi-card"><span class="kpi-value" id="kpi-design">—</span><span class="kpi-label"><span class="kpi-dot gold"></span>בעיצוב</span></div>
+  </div>
+
+  <div class="content-panel">
+
+  <!-- Filters toolbar -->
   <div id="filters-bar" class="filters-bar">
-    <input type="text" id="proj-search" class="filter-search" placeholder="🔍 חיפוש..." autocomplete="off" />
+    <div class="search-wrap">
+      <span class="ui-icon search-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg></span>
+      <input type="text" id="proj-search" class="filter-search" placeholder="חיפוש..." autocomplete="off" />
+    </div>
     <select id="filter-type" class="filter-select">
       <option value="">כל הסוגים</option>
       <option value="client">לקוחות</option>
@@ -495,6 +507,6 @@
   </div>
 </div>
 
-<script src="app.js?v=69"></script>
+<script src="app.js?v=70"></script>
 </body>
 </html>
