@@ -83,6 +83,13 @@ const ICONS = {
   bell:     ICON_SVG('<path d="M18 10a6 6 0 1 0-12 0c0 4.5-1.8 5.8-1.8 6.8h15.6c0-1-1.8-2.3-1.8-6.8z"/><path d="M10.2 20a2 2 0 0 0 3.6 0"/>'),
   key:      ICON_SVG('<circle cx="8" cy="16" r="3.5"/><path d="M10.5 13.5L20 4M16.5 7.5L19 10M13.5 10.5l1.8 1.8"/>'),
   factory:  ICON_SVG('<path d="M3 21V9.5l5.5 3.2V9.5l5.5 3.2V5.5H21V21H3z"/><path d="M7 17h2M12 17h2M17 17h0.01"/>'),
+  note:     ICON_SVG('<path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.5 0-2.9-.4-4.1-1L3 20l1-5.4A8.5 8.5 0 1 1 21 11.5z"/>'),
+  info:     ICON_SVG('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'),
+  design:   ICON_SVG('<path d="M17 3l4 4-11 11H6v-4L17 3z"/><path d="M14 6l4 4"/>'),
+  calendar: ICON_SVG('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>'),
+  clock:    ICON_SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  alert:    ICON_SVG('<path d="M12 3.5L22 21H2L12 3.5z"/><path d="M12 10v4.5M12 17.5h.01"/>'),
+  check:    ICON_SVG('<path d="M20 6L9 17l-5-5"/>'),
 };
 
 function icon(name, cls = '') {
@@ -467,7 +474,7 @@ function renderProjectList() {
   if (projects.length === 0) {
     list.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">${S.view === 'completed' ? '✅' : '📋'}</div>
+        <div class="empty-icon ui-icon">${S.view === 'completed' ? ICONS.check : ICONS.projects}</div>
         <p>${S.view === 'completed' ? 'אין פרויקטים שהסתיימו' : 'אין פרויקטים'}</p>
       </div>`;
     return;
@@ -507,9 +514,9 @@ function renderProjectRow(p) {
   ).join('');
 
   const indicators = [
-    notesCount   ? `<span class="indicator notes"   title="${notesCount} הערות">💬</span>` : '',
-    infoCount    ? `<span class="indicator info"    title="${infoCount} מידע חשוב">ℹ️</span>` : '',
-    designsCount ? `<span class="indicator designs" title="${designsCount} עיצובים">🎨</span>` : '',
+    notesCount   ? `<span class="indicator notes ui-icon"   title="${notesCount} הערות">${ICONS.note}</span>` : '',
+    infoCount    ? `<span class="indicator info ui-icon"    title="${infoCount} מידע חשוב">${ICONS.info}</span>` : '',
+    designsCount ? `<span class="indicator designs ui-icon" title="${designsCount} עיצובים">${ICONS.design}</span>` : '',
   ].filter(Boolean).join('');
 
   const typeLabel = p.type === 'client' ? 'לקוח' : 'משרד';
@@ -517,13 +524,13 @@ function renderProjectRow(p) {
 
   const deadlineHtml = p.deadline
     ? `<span class="deadline-chip ${ds}" title="${p.deadline}">
-         ${ds === 'overdue' ? '⚠️' : ds === 'soon' ? '⏰' : '📅'} ${fmt.date(p.deadline)}
+         ${icon(ds === 'overdue' ? 'alert' : ds === 'soon' ? 'clock' : 'calendar', 'deadline-ico')} ${fmt.date(p.deadline)}
        </span>`
     : '';
 
   const subRows = (p.designs || []).map((d, i) => `
     <div class="design-subrow" data-project-id="${escHtml(p.id)}" data-design-idx="${i}">
-      <span class="design-sub-icon">🎨</span>
+      <span class="design-sub-icon ui-icon">${ICONS.design}</span>
       <span class="design-sub-name">${escHtml(d.name || `עיצוב ${i+1}`)}</span>
       ${d.status ? `<span class="design-sub-status">${escHtml(d.status)}</span>` : ''}
     </div>`).join('');
@@ -707,7 +714,7 @@ function renderProjectPanel(p) {
     const ovLatestNote = ovNotes.length ? ovNotes[ovNotes.length - 1] : null;
     const ovLatestInfo = ovInfo.length  ? ovInfo[ovInfo.length - 1]   : null;
     const ovDeadlineChip = p.deadline
-      ? `<span class="deadline-chip ${ovDs}">${ovDs === 'overdue' ? '⚠️' : ovDs === 'soon' ? '⏰' : '📅'} ${fmt.date(p.deadline)}</span>`
+      ? `<span class="deadline-chip ${ovDs}">${icon(ovDs === 'overdue' ? 'alert' : ovDs === 'soon' ? 'clock' : 'calendar', 'deadline-ico')} ${fmt.date(p.deadline)}</span>`
       : '<span class="text-muted text-sm">ללא דדליין</span>';
 
     tabContent = `
@@ -859,7 +866,7 @@ function renderProjectPanel(p) {
   const typeLabel = p.type === 'office' ? 'פרויקט משרד' : 'פרויקט לקוח';
   const typeClass = p.type === 'office' ? 'office' : 'client';
   const headerDeadline = p.deadline
-    ? `<span class="deadline-chip ${ds}">${ds === 'overdue' ? '⚠️' : ds === 'soon' ? '⏰' : '📅'} ${fmt.date(p.deadline)}</span>`
+    ? `<span class="deadline-chip ${ds}">${icon(ds === 'overdue' ? 'alert' : ds === 'soon' ? 'clock' : 'calendar', 'deadline-ico')} ${fmt.date(p.deadline)}</span>`
     : '';
   const headerDrive = p.folderId
     ? `<a class="btn-drive-folder pph-drive" href="https://drive.google.com/drive/folders/${escHtml(p.folderId)}" target="_blank" rel="noopener" title="פתח תיקייה ב-Drive">📁</a>`
