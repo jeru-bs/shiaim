@@ -270,9 +270,9 @@ a { text-decoration: none; color: inherit; }
 .app-shell { display: flex; flex-direction: row; align-items: stretch; }
 
 .app-sidebar {
-  width: 224px;
+  width: 236px;
   flex-shrink: 0;
-  background: var(--navy-dark);
+  background: var(--sidebar-bg);
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -285,10 +285,13 @@ a { text-decoration: none; color: inherit; }
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 1rem 1.1rem;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  gap: 0.7rem;
+  padding: 1.15rem 1.1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  cursor: pointer;                       /* brand click → home (5A.2) */
+  transition: background var(--transition);
 }
+.sidebar-brand:hover { background: rgba(255,255,255,0.04); }
 .sidebar-logo {
   width: 42px; height: 42px;
   background: #fff;
@@ -305,35 +308,36 @@ a { text-decoration: none; color: inherit; }
   display: block;
 }
 .sidebar-brand-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
-.sidebar-brand-title { font-size: 1.05rem; font-weight: 700; color: #fff; }
-.sidebar-brand-sub { font-size: 0.7rem; color: rgba(255,255,255,0.55); }
+.sidebar-brand-title { font-size: 1.05rem; font-weight: 700; color: #fff; letter-spacing: 0.01em; }
+.sidebar-brand-sub { font-size: 0.68rem; color: rgba(255,255,255,0.45); letter-spacing: 0.03em; }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.75rem 0.6rem;
+  gap: 2px;
+  padding: 1rem 0.75rem;
 }
 .sidebar-nav-item {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  padding: 0.65rem 0.8rem;
-  border-radius: var(--radius-sm);
-  color: rgba(255,255,255,0.72);
-  font-size: 0.9rem;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius);
+  color: rgba(255,255,255,0.62);
+  font-size: 0.875rem;
   font-weight: 600;
   font-family: inherit;
   text-align: right;
   transition: background var(--transition), color var(--transition), box-shadow var(--transition);
 }
-.sidebar-nav-item .wing-tile-icon { font-size: 1.15rem; line-height: 1; }
-.sidebar-nav-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+.sidebar-nav-item .wing-tile-icon { font-size: 1.1rem; line-height: 1; opacity: 0.85; }
+.sidebar-nav-item:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.92); }
 .sidebar-nav-item.active {
-  background: var(--navy-light);
+  background: rgba(255,255,255,0.07);     /* muted, not a loud blue button */
   color: #fff;
-  box-shadow: inset 3px 0 0 var(--gold);
+  box-shadow: inset 2px 0 0 var(--gold);  /* thin, precise gold marker */
 }
+.sidebar-nav-item.active .wing-tile-icon { opacity: 1; }
 
 .app-workspace {
   flex: 1;
@@ -351,7 +355,15 @@ a { text-decoration: none; color: inherit; }
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding: 1.25rem 1.25rem 5rem;
+  padding: 1.5rem 2rem 4rem;
+}
+/* Centered, width-capped content — no more edge-to-edge smear (5A.2) */
+.workspace-body > .content-panel,
+.workspace-body > .wing-content {
+  width: 100%;
+  max-width: 1360px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .content-panel {
   flex: 0 0 auto;          /* size to content — no empty white sea */
@@ -594,10 +606,22 @@ a { text-decoration: none; color: inherit; }
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 1.1rem 1.35rem;
+  padding: 1.35rem 1.5rem;
   flex-shrink: 0;
   border-bottom: 1px solid var(--border);
 }
+.dashboard-actions { display: flex; align-items: center; gap: 0.5rem; }
+.btn-add-header {
+  padding: 0.55rem 1.15rem;
+  background: var(--ink);
+  color: #fff;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: background var(--transition);
+}
+.btn-add-header:hover { background: var(--ink-800); }
 .dashboard-header .section-header {
   padding: 0;
   flex: 1;
@@ -606,11 +630,11 @@ a { text-decoration: none; color: inherit; }
   justify-content: flex-start;
 }
 .dashboard-header .section-label {
-  font-size: 1.3rem;
+  font-size: 1.4rem;
   font-weight: 700;
   text-transform: none;
-  letter-spacing: -0.4px;
-  color: var(--navy);
+  letter-spacing: -0.01em;
+  color: var(--ink);
 }
 .dashboard-header .section-count {
   font-size: 0.82rem;
@@ -794,6 +818,9 @@ a { text-decoration: none; color: inherit; }
 .deadline-chip.soon    { color: var(--amber); font-weight: 600; }
 
 /* ── FAB ── */
+/* 5A.2: the floating FAB is hidden — the primary action moved to the
+   dashboard header (#add-btn-header). Element + wiring kept intact. */
+.fab { display: none !important; }
 .fab {
   position: fixed;
   bottom: 1.25rem;

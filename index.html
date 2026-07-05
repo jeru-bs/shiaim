@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="שיאים">
   <title>התנהלות שוטפת — שיאים</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="app.css?v=67">
+  <link rel="stylesheet" href="app.css?v=68">
 </head>
 <body>
 
@@ -64,7 +64,7 @@
 
   <!-- Right Sidebar Navigation (Pulse 4B) -->
   <aside class="app-sidebar">
-    <div class="sidebar-brand">
+    <div class="sidebar-brand" onclick="openWing(null)" role="button" tabindex="0" title="חזרה למסך הראשי">
       <div class="sidebar-logo"><img src="shiaim-logo.jpg" alt="שיאים" /></div>
       <div class="sidebar-brand-text">
         <span class="sidebar-brand-title">שיאים</span>
@@ -122,7 +122,10 @@
       <span id="section-label" class="section-label">פרויקטים פעילים</span>
       <span id="section-count" class="section-count">0 פרויקטים</span>
     </div>
-    <button id="view-toggle" class="btn-view-toggle">הסתיימו</button>
+    <div class="dashboard-actions">
+      <button id="view-toggle" class="btn-view-toggle">הסתיימו</button>
+      <button id="add-btn-header" class="btn-add-header" onclick="openAddModal()">+ פרויקט</button>
+    </div>
   </div>
 
   <!-- Filters -->
