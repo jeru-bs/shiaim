@@ -3011,6 +3011,18 @@ function markAllNotifsRead() {
   toast('כל ההתראות סומנו כנקראו ✓', 'success');
 }
 
+// Display-only retention (Pulse 4E.3): read notifications older than 3 days are
+// hidden from the notifications panel. Nothing is deleted — S.changes and the
+// Sheets activity log stay intact; this filters the rendered list only.
+const NOTIF_READ_RETENTION_MS = 3 * 86400000;
+function isVisibleChangeInNotifications(change) {
+  const ts = new Date(change.timestamp).getTime();
+  if (isNaN(ts)) return true;                        // malformed timestamp — prefer showing
+  const lsTime = S.lastSeen ? new Date(S.lastSeen).getTime() : 0;
+  if (isNaN(lsTime) || ts > lsTime) return true;     // unread (or unusable lastSeen) — always show
+  return ts >= Date.now() - NOTIF_READ_RETENTION_MS; // read — show only if from the last 3 days
+}
+
 function _renderNotifPanel() {
   const panel = document.getElementById('changes-panel');
   const body  = panel.querySelector('.panel-body');
@@ -3080,7 +3092,9 @@ function _renderNotifPanel() {
     bits.push('<div class="empty-state"><div class="empty-icon">🔔</div><p>אין התראות חדשות</p></div>');
   }
 
-  if (S.changes.length) {
+  // Retention filter is render-time only — S.changes itself is never touched
+  const visibleChanges = S.changes.filter(isVisibleChangeInNotifications);
+  if (visibleChanges.length) {
     const lsTime = S.lastSeen ? new Date(S.lastSeen).getTime() : 0;
     const imap2 = {
       status:{cls:'status',ic:'🔄'}, note:{cls:'note',ic:'💬'}, info:{cls:'info',ic:'ℹ️'},
@@ -3089,7 +3103,7 @@ function _renderNotifPanel() {
       field:{cls:'field',ic:'✏️'}, file:{cls:'file',ic:'📎'}
     };
     bits.push('<div class="notif-group-title" style="margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem">📋 כל הפעילות</div>' +
-      S.changes.slice(0,50).map(c => {
+      visibleChanges.slice(0,50).map(c => {
         const ic   = imap2[c.changeType] || imap2.field;
         const isN  = c.user !== S.user.username && new Date(c.timestamp).getTime() > lsTime;
         const user = CONFIG.USERS[c.user]?.displayName || c.user;
