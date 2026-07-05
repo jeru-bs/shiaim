@@ -398,8 +398,6 @@ async function restoreSession() {
 function renderHeader() {
   const el = document.getElementById('user-display');
   if (el) el.innerHTML = `<span class="role-dot"></span><span>${escHtml(S.user.displayName)}</span>`;
-  const isBoss = S.user.role === 'boss';
-  document.getElementById('settings-btn').classList.toggle('hidden', !isBoss);
 }
 
 function renderFilters() {
@@ -1723,11 +1721,7 @@ function wireEvents() {
   // Changes bell
   document.getElementById('changes-btn').addEventListener('click', openChangesPanel);
 
-  // Settings (boss only)
-  document.getElementById('settings-btn').addEventListener('click', openStatusesModal);
-
-  // Change password
-  document.getElementById('change-password-btn').addEventListener('click', openChangePasswordModal);
+  // Change-password modal submit (the modal is opened from the Settings wing since 4E.1)
   document.getElementById('btn-submit-change-password').addEventListener('click', submitChangePassword);
 
   // Add project FAB
@@ -1792,9 +1786,8 @@ function wireEvents() {
   document.getElementById('btn-add-status').addEventListener('click', addStatus);
   document.getElementById('btn-save-statuses').addEventListener('click', saveStatuses);
 
-  // Setup modal
+  // Setup modal (opened from the Settings wing since 4E.1)
   document.getElementById('btn-save-setup').addEventListener('click', saveSetup);
-  document.getElementById('btn-open-setup').addEventListener('click', openSetupModal);
 
   // Login enter key
   document.getElementById('password').addEventListener('keydown', e => {
@@ -1853,6 +1846,56 @@ function openWing(name) {
   if      (name === 'clients')  loadAndRenderClientsWing();
   else if (name === 'ideas')    loadAndRenderIdeasWing();
   else if (name === 'products') { S.productsSubTab = null; renderProductsWing(); }
+  else if (name === 'settings') renderSettingsWing();
+}
+
+// ================================================================
+// SETTINGS WING (Pulse 4E.1)
+// ================================================================
+function renderSettingsWing() {
+  const wc = document.getElementById('wing-content');
+  const isBoss = S.user.role === 'boss';
+  const roleLabel = isBoss ? 'מנהל' : 'משתמש';
+  wc.innerHTML = `
+    <div class="wing-header">
+      <button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>
+      <h2 class="wing-title">${icon('settings')} הגדרות</h2>
+    </div>
+    <div class="settings-sections">
+      <div class="settings-section">
+        <div class="settings-section-title">פרופיל</div>
+        <div class="settings-row">
+          <span class="settings-row-label">משתמש פעיל</span>
+          <span class="settings-row-value">${escHtml(S.user.displayName)}</span>
+        </div>
+        <div class="settings-row">
+          <span class="settings-row-label">תפקיד</span>
+          <span class="settings-row-value">${roleLabel}</span>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">אבטחה</div>
+        <div class="settings-row">
+          <span class="settings-row-label">סיסמת כניסה למערכת</span>
+          <button class="btn-secondary btn-sm" onclick="openChangePasswordModal()">שינוי סיסמה</button>
+        </div>
+      </div>
+      ${isBoss ? `
+      <div class="settings-section">
+        <div class="settings-section-title">ניהול</div>
+        <div class="settings-row">
+          <span class="settings-row-label">שלבי סטטוס של פרויקטים</span>
+          <button class="btn-secondary btn-sm" onclick="openStatusesModal()">ניהול סטטוסים</button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">מערכת / מתקדם</div>
+        <div class="settings-row">
+          <span class="settings-row-label">חיבור סקריפט / API — הגדרה חד-פעמית</span>
+          <button class="btn-secondary btn-sm" onclick="openSetupModal()">חיבור מערכת</button>
+        </div>
+      </div>` : ''}
+    </div>`;
 }
 
 // ================================================================

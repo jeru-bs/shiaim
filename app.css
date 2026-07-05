@@ -1351,6 +1351,39 @@ a { text-decoration: none; color: inherit; }
 }
 .section-title-row .section-title { margin-bottom: 0; flex: 1; }
 
+/* ── Settings wing (Pulse 4E.1) ── */
+.settings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  max-width: 560px;
+  padding: 0.25rem 0;
+}
+.settings-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 1rem;
+}
+.settings-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 36px;
+}
+.settings-row + .settings-row { border-top: 1px solid var(--border); }
+.settings-row-label { font-size: 0.84rem; color: var(--text-sec); }
+.settings-row-value { font-size: 0.84rem; font-weight: 600; color: var(--text); }
+
 /* ── UI icon system (Pulse 4D.1) ── */
 .ui-icon {
   display: inline-flex;
