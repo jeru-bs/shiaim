@@ -19,10 +19,15 @@ function isBossUser(username) {
 // via token-based sessions. See login() / apiCall() / restoreSession().
 
 // Must match the ?v= on app.js/app.css in index.html and CACHE_NAME in sw.js.
-const APP_VERSION = '84';
+const APP_VERSION = '85';
+
+// Stable Web App deployment URL (same deployment id across script versions).
+// Baked in as the default so new devices need no manual setup; a value in
+// localStorage (setup modal) still overrides it.
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwElreyCeSg2yIuqbg3ZJ63IcY3_kPqriW_3zQymCvxwkgxjgggkL35J0jKgXoiRFbs/exec';
 
 const CONFIG = {
-  API_URL: localStorage.getItem('shiaim_api_url') || '',
+  API_URL: localStorage.getItem('shiaim_api_url') || DEFAULT_API_URL,
 
   USERS: {
     'aharon': { displayName: 'אהרון', role: 'user'  },
