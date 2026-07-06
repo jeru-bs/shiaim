@@ -288,6 +288,9 @@ a { text-decoration: none; color: inherit; }
 }
 
 /* ── App Shell + Sidebar (Pulse 4B) ── */
+/* id+class so this beats the #app column rule (was an inline style, which
+   blocked the mobile media-query override) */
+#app.app-shell { display: flex; flex-direction: row; align-items: stretch; min-height: 100vh; }
 .app-shell { display: flex; flex-direction: row; align-items: stretch; }
 
 .app-sidebar {
@@ -494,7 +497,7 @@ a { text-decoration: none; color: inherit; }
 .app-workspace .app-header .changes-badge { border-color: var(--surface); }
 
 @media (max-width: 640px) {
-  .app-shell { flex-direction: column; }
+  #app.app-shell, .app-shell { flex-direction: column; }
   .app-sidebar {
     width: 100%;
     height: auto;
@@ -2690,7 +2693,8 @@ a { text-decoration: none; color: inherit; }
   input, select, textarea { font-size: 16px; }
 
   /* ── Workspace spacing ── */
-  .app-workspace { min-height: 100dvh; }
+  /* fill the space left under the top nav bar, don't force extra scroll */
+  .app-workspace { min-height: 0; flex: 1; }
   .workspace-body { padding: 0.75rem 0.75rem 3rem; }
   .page-header { padding: 0.25rem 0.1rem 0.6rem; }
   .page-title { font-size: 1.15rem; }
