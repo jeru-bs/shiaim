@@ -58,6 +58,8 @@ const S = {
   // Cache-first flags: true after a wing's data loaded successfully once this session.
   // An empty-but-successful fetch still counts as loaded; a failed fetch does not.
   loaded: { clients: false, ideas: false, manufacturers: false, products: false },
+  // Office schedule wing (7A.2) — month view state, cached per YYYY-MM
+  schedule: { month: null, eventsByMonth: {}, loadedMonths: {}, needsSetup: false },
   panelManufacturerId:  null,
   currentWing:          null,
   productsSubTab:       'manufacturers',
@@ -1921,7 +1923,171 @@ function openWing(name) {
   if      (name === 'clients')  loadAndRenderClientsWing();
   else if (name === 'ideas')    loadAndRenderIdeasWing();
   else if (name === 'products') { S.productsSubTab = null; renderProductsWing(); }
+  else if (name === 'schedule') loadAndRenderScheduleWing();
   else if (name === 'settings') renderSettingsWing();
+}
+
+// ================================================================
+// OFFICE SCHEDULE WING — לו"ז משרד (Pulse 7A.2, read-only month view)
+// ================================================================
+function schedMonthKey_(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function schedYmd_(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+// Full weeks covering the month: Sunday of week 1 → Saturday of the last week
+function schedGridRange_(monthKey) {
+  const p = monthKey.split('-').map(Number);
+  const first = new Date(p[0], p[1] - 1, 1);
+  const last  = new Date(p[0], p[1], 0);
+  const start = new Date(first); start.setDate(first.getDate() - first.getDay());
+  const end   = new Date(last);  end.setDate(last.getDate() + (6 - last.getDay()));
+  return { start, end };
+}
+
+async function loadAndRenderScheduleWing() {
+  if (!S.schedule.month) S.schedule.month = schedMonthKey_(new Date());
+  renderScheduleWing();
+  await ensureScheduleMonth(S.schedule.month);
+}
+
+// Cache-first per month: cached months render instantly, others fetch once
+async function ensureScheduleMonth(key) {
+  if (S.schedule.needsSetup) { renderScheduleGrid(); return; }
+  if (S.schedule.loadedMonths[key]) { renderScheduleGrid(); return; }
+  renderScheduleGrid();   // paints the empty grid + loading hint immediately
+  const r = schedGridRange_(key);
+  try {
+    const res = await apiCall('getCalendarEvents', { start: schedYmd_(r.start), end: schedYmd_(r.end) });
+    if (S.schedule.month !== key && !res.needsSetup) {
+      // user already navigated away — still cache the result
+      if (!res.needsSetup) { S.schedule.eventsByMonth[key] = res.events || []; S.schedule.loadedMonths[key] = true; }
+      return;
+    }
+    if (res.needsSetup) { S.schedule.needsSetup = true; renderScheduleGrid(); return; }
+    S.schedule.eventsByMonth[key] = res.events || [];
+    S.schedule.loadedMonths[key] = true;
+    renderScheduleGrid();
+  } catch (e) {
+    toast('שגיאה בטעינת הלו"ז: ' + e.message, 'error');
+    renderScheduleGrid();
+  }
+}
+
+function schedShiftMonth(delta) {
+  const p = S.schedule.month.split('-').map(Number);
+  S.schedule.month = schedMonthKey_(new Date(p[0], p[1] - 1 + delta, 1));
+  ensureScheduleMonth(S.schedule.month);
+}
+function schedToday() {
+  S.schedule.month = schedMonthKey_(new Date());
+  ensureScheduleMonth(S.schedule.month);
+}
+
+// Boss-only one-time calendar setup (wired to the existing GAS action)
+async function schedSetupCalendar() {
+  showSpinner(true);
+  try {
+    await apiCall('setupOfficeCalendar');
+    S.schedule.needsSetup = false;
+    S.schedule.eventsByMonth = {};
+    S.schedule.loadedMonths = {};
+    toast('יומן המשרד חובר ✓', 'success');
+    await ensureScheduleMonth(S.schedule.month);
+  } catch (e) {
+    toast('שגיאה בהגדרת היומן: ' + e.message, 'error');
+  } finally {
+    showSpinner(false);
+  }
+}
+
+function renderScheduleWing() {
+  const wc = document.getElementById('wing-content');
+  wc.innerHTML = `
+    <div class="wing-header">
+      <button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>
+      <h2 class="wing-title">${icon('calendar')} לו״ז משרד</h2>
+      <div class="sched-nav">
+        <button class="btn-secondary btn-sm" onclick="schedToday()">היום</button>
+        <button class="sched-nav-btn" onclick="schedShiftMonth(-1)" title="חודש קודם" aria-label="חודש קודם">‹</button>
+        <span id="sched-month-label" class="sched-month-label"></span>
+        <button class="sched-nav-btn" onclick="schedShiftMonth(1)" title="חודש הבא" aria-label="חודש הבא">›</button>
+        <button class="btn-gold btn-sm" disabled title="יצירת אירועים תגיע בשלב הבא">+ אירוע</button>
+      </div>
+    </div>
+    <div id="schedule-grid" class="schedule-grid-wrap"></div>`;
+  renderScheduleGrid();
+}
+
+function renderScheduleGrid() {
+  const wrap = document.getElementById('schedule-grid');
+  if (!wrap) return;
+  const key = S.schedule.month;
+  const p = key.split('-').map(Number);
+  const label = document.getElementById('sched-month-label');
+  if (label) label.textContent = new Date(p[0], p[1] - 1, 1).toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+
+  if (S.schedule.needsSetup) {
+    const isBoss = S.user && S.user.role === 'boss';
+    wrap.innerHTML = `
+      <div class="sched-panel">
+        <div class="empty-state">
+          <div class="empty-icon ui-icon">${ICONS.calendar}</div>
+          <p>${isBoss ? 'יומן המשרד טרם הוגדר' : 'יומן המשרד טרם הוגדר — פנה למנהל'}</p>
+          ${isBoss ? `<button class="btn-add-header" style="margin-top:0.75rem" onclick="schedSetupCalendar()">הגדר יומן משרד</button>` : ''}
+        </div>
+      </div>`;
+    return;
+  }
+
+  const loaded = !!S.schedule.loadedMonths[key];
+  const events = S.schedule.eventsByMonth[key] || [];
+
+  // spread each event over the days it covers (dates only)
+  const byDay = {};
+  events.forEach(ev => {
+    const sK = String(ev.start).split('T')[0];
+    const eK = String(ev.end || ev.start).split('T')[0];
+    const sp = sK.split('-').map(Number), ep = eK.split('-').map(Number);
+    let d = new Date(sp[0], sp[1] - 1, sp[2]);
+    const stop = new Date(ep[0], ep[1] - 1, ep[2]);
+    let guard = 0;
+    while (d <= stop && guard < 62) {
+      const k = schedYmd_(d);
+      (byDay[k] = byDay[k] || []).push(ev);
+      d.setDate(d.getDate() + 1);
+      guard++;
+    }
+  });
+
+  const r = schedGridRange_(key);
+  const todayKey = schedYmd_(new Date());
+  const dows = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
+  let cells = '';
+  for (let d = new Date(r.start); d <= r.end; d.setDate(d.getDate() + 1)) {
+    const k = schedYmd_(d);
+    const inMonth = (d.getMonth() + 1) === p[1];
+    const dayEvents = byDay[k] || [];
+    const shown = dayEvents.slice(0, 3);
+    cells += `
+      <div class="sched-day${inMonth ? '' : ' out'}${k === todayKey ? ' today' : ''}">
+        <span class="sched-day-num">${d.getDate()}</span>
+        ${shown.map(ev => `
+          <span class="sched-ev" data-type="${escHtml(ev.type || 'office')}" title="${escHtml(ev.title)}${ev.description ? ' — ' + escHtml(ev.description) : ''}">
+            <span class="sched-ev-dot"></span>
+            <span class="sched-ev-text">${ev.allDay ? '' : `<span class="sched-ev-time">${String(ev.start).slice(11, 16)}</span> `}${escHtml(ev.title)}</span>
+          </span>`).join('')}
+        ${dayEvents.length > 3 ? `<span class="sched-more">+${dayEvents.length - 3}</span>` : ''}
+      </div>`;
+  }
+
+  wrap.innerHTML = `
+    <div class="sched-panel">
+      <div class="sched-dow-row">${dows.map(x => `<span>${x}</span>`).join('')}</div>
+      <div class="sched-grid">${cells}</div>
+      ${loaded ? '' : '<div class="sched-loading">טוען אירועים…</div>'}
+    </div>`;
 }
 
 // ================================================================
