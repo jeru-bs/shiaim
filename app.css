@@ -1749,6 +1749,24 @@ a { text-decoration: none; color: inherit; }
 .sched-ev[data-type="avail-aharon"] { background: #E9F2F1; }
 .sched-ev[data-type="avail-yakov"]  { background: #F6F1E3; }
 .sched-more { font-size: 0.68rem; color: var(--text-muted); padding-inline-start: 12px; }
+/* 7A.3 — clickable calendar */
+.sched-day { cursor: pointer; transition: background var(--transition); }
+.sched-day:hover { background: var(--surface-2); }
+.sched-day.today:hover { background: #EEF2F9; }
+.sched-ev { cursor: pointer; }
+.sched-ev:hover { background: var(--surface-2); }
+.sched-ev[data-type="avail-aharon"]:hover { background: #DDEBE9; }
+.sched-ev[data-type="avail-yakov"]:hover  { background: #EFE7D2; }
+.ev-allday-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+.ev-allday-label input { accent-color: var(--ink); width: 15px; height: 15px; cursor: pointer; }
 .sched-loading { padding: 0.7rem; text-align: center; color: var(--text-muted); font-size: 0.8rem; border-top: 1px solid var(--border); }
 
 @media (max-width: 760px) {

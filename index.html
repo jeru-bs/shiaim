@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="שיאים">
   <title>התנהלות שוטפת — שיאים</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="app.css?v=77">
+  <link rel="stylesheet" href="app.css?v=78">
 </head>
 <body>
 
@@ -414,6 +414,63 @@
 </div>
 
 <!-- ============================================================
+     OFFICE SCHEDULE — EVENT MODAL (Pulse 7A.3)
+     ============================================================ -->
+<div id="event-modal" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="event-modal-title">אירוע חדש</span>
+      <button class="btn-modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">כותרת האירוע *</label>
+        <input type="text" id="ev-title" class="form-input" placeholder="מה קורה?" autocomplete="off" />
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">סוג</label>
+          <select id="ev-type" class="form-select">
+            <option value="office">אירוע משרד</option>
+            <option value="meeting">פגישה</option>
+            <option value="task">משימה</option>
+            <option value="reminder">תזכורת</option>
+            <option value="avail-aharon">זמינות אהרן</option>
+            <option value="avail-yakov">זמינות יעקב</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">תאריך</label>
+          <input type="date" id="ev-date" class="form-input" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="ev-allday-label"><input type="checkbox" id="ev-allday" /> כל היום</label>
+      </div>
+      <div class="form-grid" id="ev-times">
+        <div class="form-group">
+          <label class="form-label">שעת התחלה</label>
+          <input type="time" id="ev-start" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">שעת סיום</label>
+          <input type="time" id="ev-end" class="form-input" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">תיאור</label>
+        <textarea id="ev-desc" class="form-textarea" placeholder="פרטים נוספים (רשות)"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-save-event" class="btn-primary">שמירה</button>
+      <button id="btn-delete-event" class="btn-danger hidden">מחיקה</button>
+      <button class="btn-secondary btn-modal-close">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
      CONFIRM DELETE MODAL
      ============================================================ -->
 <div id="confirm-modal" class="modal-backdrop hidden">
@@ -510,6 +567,6 @@
   </div>
 </div>
 
-<script src="app.js?v=77"></script>
+<script src="app.js?v=78"></script>
 </body>
 </html>

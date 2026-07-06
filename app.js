@@ -1883,6 +1883,12 @@ function wireEvents() {
 
   // Add manufacturer modal
   document.getElementById('btn-submit-add-manufacturer').addEventListener('click', submitAddManufacturer);
+
+  // Office schedule — event modal (7A.3)
+  document.getElementById('btn-save-event')?.addEventListener('click', schedSaveEvent);
+  document.getElementById('btn-delete-event')?.addEventListener('click', schedDeleteEvent);
+  document.getElementById('ev-allday')?.addEventListener('change', schedToggleAllDay_);
+  document.getElementById('ev-type')?.addEventListener('change', schedTypeChanged_);
 }
 
 
@@ -2013,11 +2019,138 @@ function renderScheduleWing() {
         <button class="sched-nav-btn" onclick="schedShiftMonth(-1)" title="חודש קודם" aria-label="חודש קודם">‹</button>
         <span id="sched-month-label" class="sched-month-label"></span>
         <button class="sched-nav-btn" onclick="schedShiftMonth(1)" title="חודש הבא" aria-label="חודש הבא">›</button>
-        <button class="btn-gold btn-sm" disabled title="יצירת אירועים תגיע בשלב הבא">+ אירוע</button>
+        <button class="btn-gold btn-sm" onclick="schedOpenEventModal()">+ אירוע</button>
       </div>
     </div>
     <div id="schedule-grid" class="schedule-grid-wrap"></div>`;
   renderScheduleGrid();
+}
+
+// ── Event create/edit/delete (Pulse 7A.3) ───────────────────────
+
+// Default date for a new event: today when viewing the current month,
+// otherwise the 1st of the displayed month
+function schedDefaultDate_() {
+  return S.schedule.month === schedMonthKey_(new Date())
+    ? schedYmd_(new Date())
+    : S.schedule.month + '-01';
+}
+
+// Open the event modal. dateStr → create on that date; ev → edit existing.
+function schedOpenEventModal(dateStr, ev) {
+  if (S.schedule.needsSetup) {
+    toast('יומן המשרד טרם הוגדר', 'error');
+    return;
+  }
+  const isEdit = !!ev;
+  S.schedule.editingEvent = ev || null;
+  document.getElementById('event-modal-title').textContent = isEdit ? 'עריכת אירוע' : 'אירוע חדש';
+  document.getElementById('ev-title').value = isEdit ? ev.title : '';
+  document.getElementById('ev-type').value  = isEdit ? (ev.type || 'office') : 'office';
+  document.getElementById('ev-date').value  = isEdit ? String(ev.start).split('T')[0] : (dateStr || schedDefaultDate_());
+  const allDay = isEdit ? !!ev.allDay : false;
+  document.getElementById('ev-allday').checked = allDay;
+  document.getElementById('ev-start').value = (isEdit && !allDay) ? String(ev.start).slice(11, 16) : '09:00';
+  document.getElementById('ev-end').value   = (isEdit && !allDay) ? String(ev.end).slice(11, 16)   : '10:00';
+  document.getElementById('ev-desc').value  = isEdit ? (ev.description || '') : '';
+  schedToggleAllDay_();
+  document.getElementById('btn-delete-event').classList.toggle('hidden', !isEdit);
+  openModalEl(document.getElementById('event-modal'));
+}
+
+function schedToggleAllDay_() {
+  const allDay = document.getElementById('ev-allday').checked;
+  document.getElementById('ev-times').style.display = allDay ? 'none' : '';
+}
+
+// Creating a task/reminder/availability suggests all-day (user can uncheck)
+function schedTypeChanged_() {
+  if (S.schedule.editingEvent) return;   // don't override an existing event
+  const t = document.getElementById('ev-type').value;
+  document.getElementById('ev-allday').checked =
+    (t === 'task' || t === 'reminder' || t === 'avail-aharon' || t === 'avail-yakov');
+  schedToggleAllDay_();
+}
+
+// Invalidate affected month caches, then reload the displayed month from server
+function schedInvalidateAndReload_(monthKeys) {
+  (monthKeys || []).concat([S.schedule.month]).filter(Boolean).forEach(k => {
+    delete S.schedule.loadedMonths[k];
+    delete S.schedule.eventsByMonth[k];
+  });
+  ensureScheduleMonth(S.schedule.month);
+}
+
+async function schedSaveEvent() {
+  const title = document.getElementById('ev-title').value.trim();
+  if (!title) { toast('כותרת האירוע היא שדה חובה', 'error'); return; }
+  const date = document.getElementById('ev-date').value;
+  if (!date) { toast('בחר תאריך לאירוע', 'error'); return; }
+  const allDay = document.getElementById('ev-allday').checked;
+  const type = document.getElementById('ev-type').value;
+  const payload = {
+    title: title,
+    allDay: allDay,
+    type: type,
+    person: type === 'avail-aharon' ? 'aharon' : (type === 'avail-yakov' ? 'yakov' : ''),
+    description: document.getElementById('ev-desc').value.trim()
+  };
+  if (allDay) {
+    payload.start = date;
+    payload.end   = date;
+  } else {
+    const st = document.getElementById('ev-start').value;
+    const en = document.getElementById('ev-end').value;
+    if (!st || !en) { toast('בחר שעת התחלה ושעת סיום', 'error'); return; }
+    if (en <= st)   { toast('שעת הסיום חייבת להיות אחרי שעת ההתחלה', 'error'); return; }
+    payload.start = date + 'T' + st + ':00';
+    payload.end   = date + 'T' + en + ':00';
+  }
+  const editing = S.schedule.editingEvent;
+  showSpinner(true);
+  try {
+    if (editing) {
+      payload.id = editing.id;
+      await apiCall('updateCalendarEvent', { event: payload });
+    } else {
+      await apiCall('createCalendarEvent', { event: payload });
+    }
+    closeModalEl(document.getElementById('event-modal'));
+    S.schedule.editingEvent = null;
+    toast(editing ? 'האירוע עודכן ✓' : 'האירוע נוצר ✓', 'success');
+    // refresh old month (if edited across months) + new month + displayed month
+    const affected = [date.slice(0, 7)];
+    if (editing) affected.push(String(editing.start).slice(0, 7));
+    schedInvalidateAndReload_(affected);
+  } catch (e) {
+    toast('שגיאה בשמירה: ' + e.message, 'error');
+  } finally {
+    showSpinner(false);
+  }
+}
+
+function schedDeleteEvent() {
+  const ev = S.schedule.editingEvent;
+  if (!ev || !ev.id) return;   // never delete without a valid event id
+  openConfirmModal({
+    title: 'מחיקת אירוע',
+    message: 'האם למחוק את האירוע הזה מהיומן?',
+    btnLabel: 'מחק', btnClass: 'btn-danger',
+    action: async () => {
+      showSpinner(true);
+      try {
+        await apiCall('deleteCalendarEvent', { eventId: ev.id });
+        closeModalEl(document.getElementById('event-modal'));
+        S.schedule.editingEvent = null;
+        toast('האירוע נמחק', 'success');
+        schedInvalidateAndReload_([String(ev.start).slice(0, 7)]);
+      } catch (e) {
+        toast('שגיאה במחיקה: ' + e.message, 'error');
+      } finally {
+        showSpinner(false);
+      }
+    }
+  });
 }
 
 function renderScheduleGrid() {
@@ -2071,10 +2204,10 @@ function renderScheduleGrid() {
     const dayEvents = byDay[k] || [];
     const shown = dayEvents.slice(0, 3);
     cells += `
-      <div class="sched-day${inMonth ? '' : ' out'}${k === todayKey ? ' today' : ''}">
+      <div class="sched-day${inMonth ? '' : ' out'}${k === todayKey ? ' today' : ''}" data-date="${k}">
         <span class="sched-day-num">${d.getDate()}</span>
         ${shown.map(ev => `
-          <span class="sched-ev" data-type="${escHtml(ev.type || 'office')}" title="${escHtml(ev.title)}${ev.description ? ' — ' + escHtml(ev.description) : ''}">
+          <span class="sched-ev" data-type="${escHtml(ev.type || 'office')}" data-evid="${escHtml(ev.id)}" title="${escHtml(ev.title)}${ev.description ? ' — ' + escHtml(ev.description) : ''}">
             <span class="sched-ev-dot"></span>
             <span class="sched-ev-text">${ev.allDay ? '' : `<span class="sched-ev-time">${String(ev.start).slice(11, 16)}</span> `}${escHtml(ev.title)}</span>
           </span>`).join('')}
@@ -2088,6 +2221,18 @@ function renderScheduleGrid() {
       <div class="sched-grid">${cells}</div>
       ${loaded ? '' : '<div class="sched-loading">טוען אירועים…</div>'}
     </div>`;
+
+  // Day click → create on that date; event click → edit (7A.3)
+  wrap.querySelectorAll('.sched-day').forEach(el => {
+    el.addEventListener('click', () => schedOpenEventModal(el.dataset.date, null));
+  });
+  wrap.querySelectorAll('.sched-ev').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const ev = (S.schedule.eventsByMonth[key] || []).find(x => x.id === el.dataset.evid);
+      if (ev) schedOpenEventModal(null, ev);
+    });
+  });
 }
 
 // ================================================================
