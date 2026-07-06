@@ -310,6 +310,78 @@ async function logChange(type, projectId, projectName, details) {
 // ================================================================
 // AUTH
 // ================================================================
+
+// ── Google Sign-In (8A.1) ──
+let _googleInited = false;
+
+async function initGoogleSignIn() {
+  const area = document.getElementById('google-signin-area');
+  const fallbackLink = document.getElementById('show-password-login');
+  let clientId = '';
+  try {
+    const cfg = await apiCall('getAuthConfig');
+    clientId = (cfg && cfg.clientId) || '';
+  } catch (e) { /* endpoint not reachable — fall back to password */ }
+
+  if (!clientId || !window.google || !google.accounts || !google.accounts.id) {
+    // Google not configured/available yet — reveal the password form as the usable path
+    if (area) area.classList.add('hidden');
+    document.getElementById('login-form').classList.remove('hidden');
+    if (fallbackLink) fallbackLink.classList.add('hidden');
+    return;
+  }
+
+  if (area) area.classList.remove('hidden');
+  if (fallbackLink) fallbackLink.classList.remove('hidden');   // keep password reachable as fallback
+
+  if (!_googleInited) {
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleCredential,
+      auto_select: false,
+      cancel_on_tap_outside: true
+    });
+    _googleInited = true;
+  }
+  const btn = document.getElementById('g_id_signin');
+  if (btn) {
+    btn.innerHTML = '';
+    google.accounts.id.renderButton(btn, { theme: 'outline', size: 'large', type: 'standard', shape: 'pill', text: 'signin_with', locale: 'he', width: 260 });
+  }
+}
+
+// Global callback for Google Identity Services
+async function handleGoogleCredential(response) {
+  const errEl = document.getElementById('login-error');
+  if (errEl) errEl.textContent = '';
+  const idToken = response && response.credential;
+  if (!idToken) { if (errEl) errEl.textContent = 'ההתחברות עם Google נכשלה'; return; }
+  showSpinner(true);
+  try {
+    const res = await apiCall('loginWithGoogle', { idToken });
+    if (res && res.ok && res.token) {
+      S.token = res.token;
+      S.user  = res.user || null;
+      sessionStorage.setItem('shiaim_token', res.token);
+      sessionStorage.setItem('shiaim_user', JSON.stringify(S.user));
+      showScreen('app');
+      loadAll();
+    } else {
+      const map = {
+        not_authorized:   'החשבון אינו מורשה להתחבר למערכת',
+        not_active:       'החשבון אינו פעיל — פנה למנהל',
+        auth_not_configured: 'התחברות Google טרם הוגדרה במערכת',
+        email_unverified: 'כתובת המייל של החשבון אינה מאומתת',
+      };
+      if (errEl) errEl.textContent = map[res && res.error] || 'ההתחברות עם Google נכשלה';
+    }
+  } catch (e) {
+    if (errEl) errEl.textContent = 'שגיאת התחברות';
+  } finally {
+    showSpinner(false);
+  }
+}
+
 async function login(username, password) {
   const key = username.trim().toLowerCase();
   try {
@@ -377,6 +449,7 @@ function forceLogout(reason) {
   S.changes  = [];
   S.statuses = [];
   showScreen('login-screen');
+  initGoogleSignIn();
   if (reason === 'token_expired') {
     const el = document.getElementById('login-error');
     if (el) el.textContent = 'הסשן פג תוקף — יש להתחבר מחדש';
@@ -1765,6 +1838,12 @@ function applyFilters() {
 // ================================================================
 function wireEvents() {
   // Login
+  // Reveal password fallback on demand (Google is the primary path, 8A.1)
+  document.getElementById('show-password-login')?.addEventListener('click', () => {
+    document.getElementById('login-form').classList.remove('hidden');
+    document.getElementById('show-password-login').classList.add('hidden');
+  });
+
   document.getElementById('login-form').addEventListener('submit', async e => {
     e.preventDefault();
     const username = document.getElementById('username').value;
@@ -3332,6 +3411,7 @@ async function init() {
     loadAll();
   } else {
     showScreen('login-screen');
+    initGoogleSignIn();
   }
 
   // Register service worker

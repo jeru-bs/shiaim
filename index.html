@@ -9,7 +9,9 @@
   <meta name="apple-mobile-web-app-title" content="שיאים">
   <title>התנהלות שוטפת — שיאים</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="app.css?v=79">
+  <link rel="stylesheet" href="app.css?v=81">
+  <!-- Google Identity Services (Google Sign-In, 8A.1) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -43,14 +45,21 @@
     <div class="login-title">התנהלות שוטפת</div>
     <div class="login-subtitle">שיאים</div>
 
-    <form class="login-form" id="login-form" autocomplete="off">
+    <!-- Google Sign-In (primary) -->
+    <div id="google-signin-area" class="google-signin-area">
+      <div id="g_id_signin"></div>
+    </div>
+    <div id="login-error" class="login-error"></div>
+
+    <!-- Password login kept as a hidden fallback (8A.1) -->
+    <button type="button" id="show-password-login" class="login-fallback-link hidden">כניסה עם סיסמה</button>
+    <form class="login-form hidden" id="login-form" autocomplete="off">
       <div class="input-group">
         <input type="text" id="username" placeholder="שם משתמש" autocomplete="username" />
       </div>
       <div class="input-group">
         <input type="password" id="password" placeholder="סיסמה" autocomplete="current-password" />
       </div>
-      <div id="login-error" class="login-error"></div>
       <button type="submit" class="btn-login">כניסה</button>
     </form>
 
@@ -567,6 +576,6 @@
   </div>
 </div>
 
-<script src="app.js?v=79"></script>
+<script src="app.js?v=81"></script>
 </body>
 </html>

@@ -212,6 +212,27 @@ a { text-decoration: none; color: inherit; }
 
 .login-form { display: flex; flex-direction: column; gap: 0.875rem; }
 
+/* Google Sign-In area (8A.1) */
+.google-signin-area {
+  display: flex;
+  justify-content: center;
+  margin: 0.5rem 0 0.25rem;
+  min-height: 44px;
+}
+.login-fallback-link {
+  display: block;
+  margin: 0.25rem auto 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.login-fallback-link:hover { color: var(--text-sec); }
+
 .input-group {
   position: relative;
   text-align: right;
