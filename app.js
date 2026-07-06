@@ -19,7 +19,7 @@ function isBossUser(username) {
 // via token-based sessions. See login() / apiCall() / restoreSession().
 
 // Must match the ?v= on app.js/app.css in index.html and CACHE_NAME in sw.js.
-const APP_VERSION = '83';
+const APP_VERSION = '84';
 
 const CONFIG = {
   API_URL: localStorage.getItem('shiaim_api_url') || '',
@@ -333,19 +333,44 @@ function waitForGis(timeoutMs = 10000) {
 async function initGoogleSignIn() {
   const area = document.getElementById('google-signin-area');
   const fallbackLink = document.getElementById('show-password-login');
-  let clientId = '';
-  try {
-    const cfg = await apiCall('getAuthConfig');
-    clientId = (cfg && cfg.clientId) || '';
-  } catch (e) { /* endpoint not reachable — fall back to password */ }
 
-  const gisReady = clientId ? await waitForGis() : false;
+  // Config fetch can fail transiently (GAS cold start / flaky mobile network) —
+  // retry a couple of times before giving up on the Google path.
+  let clientId = '', cfgError = '';
+  for (let attempt = 1; attempt <= 3 && !clientId; attempt++) {
+    try {
+      const cfg = await apiCall('getAuthConfig');
+      clientId = (cfg && cfg.clientId) || '';
+    } catch (e) {
+      cfgError = (e && e.message) || 'network';
+      if (attempt < 3) await new Promise(r => setTimeout(r, 1500 * attempt));
+    }
+  }
+
+  // Wait for the async GSI script; if it never arrived (load error on slow
+  // or filtered connections), re-inject it once and wait again.
+  let gisReady = clientId ? await waitForGis() : false;
+  if (clientId && !gisReady) {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    document.head.appendChild(s);
+    gisReady = await waitForGis();
+  }
 
   if (!clientId || !gisReady) {
     // Google not configured/available yet — reveal the password form as the usable path
     if (area) area.classList.add('hidden');
     document.getElementById('login-form').classList.remove('hidden');
     if (fallbackLink) fallbackLink.classList.add('hidden');
+    // Surface WHY next to the version badge so remote debugging is possible.
+    const verEl = document.getElementById('app-version-label');
+    if (verEl) {
+      const reason = !clientId
+        ? 'שרת ההגדרות לא זמין' + (cfgError ? ' (' + cfgError + ')' : '')
+        : 'סקריפט Google לא נטען';
+      verEl.textContent = 'גרסה ' + APP_VERSION + ' · ' + reason;
+    }
     return;
   }
 
