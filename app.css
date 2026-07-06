@@ -2677,3 +2677,84 @@ a { text-decoration: none; color: inherit; }
   padding: 0.25rem 0.6rem;
   border-radius: 6px;
 }
+
+/* ================================================================
+   MOBILE LAYOUT (Pulse 8B) — every rule scoped to ≤640px.
+   Desktop (>640px) is untouched by design.
+   ================================================================ */
+@media (max-width: 640px) {
+
+  /* ── Global guards ── */
+  html, body { overflow-x: hidden; }
+  /* 16px inputs prevent iOS Safari from force-zooming on focus */
+  input, select, textarea { font-size: 16px; }
+
+  /* ── Workspace spacing ── */
+  .app-workspace { min-height: 100dvh; }
+  .workspace-body { padding: 0.75rem 0.75rem 3rem; }
+  .page-header { padding: 0.25rem 0.1rem 0.6rem; }
+  .page-title { font-size: 1.15rem; }
+  .kpi-strip { gap: 0.5rem; }
+
+  /* ── Top header: keep it tight ── */
+  .header-actions { gap: 0.35rem; }
+  .user-chip span:last-child {
+    max-width: 82px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Filters bar: search full width, selects two per row ── */
+  .filters-bar { flex-wrap: wrap; padding: 0.6rem 0.75rem; row-gap: 0.45rem; }
+  .filters-bar .search-wrap { flex: 1 1 100%; }
+  .filters-bar .filter-select { flex: 1 1 calc(50% - 0.4rem); min-width: 0; }
+  .filters-bar .btn-clear-filters { flex: 1 1 100%; }
+
+  /* ── Projects table → stacked cards ── */
+  .ptable-head { display: none; }
+  .project-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "name     name"
+      "status   status"
+      "deadline priority"
+      "type     ind";
+    row-gap: 0.4rem;
+    column-gap: 0.6rem;
+    padding: 0.8rem 1rem;
+  }
+  .pcol-name     { grid-area: name; }
+  .pcol-status   { grid-area: status; }
+  .pcol-deadline { grid-area: deadline; }
+  .pcol-priority { grid-area: priority; justify-content: flex-end; }
+  .pcol-type     { grid-area: type; }
+  .pcol-ind      { grid-area: ind; justify-content: flex-end; }
+
+  /* ── Floating detail panels → full screen ── */
+  .center-panel {
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    transform: translateY(6%);
+  }
+  .center-panel.open { transform: none; }
+  .design-panel-modal { width: 100vw; height: 100dvh; }
+  .side-panel { width: 100vw; }
+  .panel-footer { flex-wrap: wrap; gap: 0.4rem; }
+
+  /* ── Modals ── */
+  .modal-box { max-width: 94vw; max-height: 92dvh; }
+  .form-grid { grid-template-columns: 1fr; }
+
+  /* ── Panel inner grids → single column ── */
+  .ov-grid { grid-template-columns: 1fr; }
+  .field-grid { grid-template-columns: 1fr; }
+
+  /* ── Wing screens: header/toolbar wrap, wide tables scroll inside ── */
+  .wing-header { flex-wrap: wrap; padding: 0.75rem 1rem; }
+  .wing-toolbar { flex-wrap: wrap; }
+  .contacts-table { overflow-x: auto; }
+  .contact-row { min-width: 560px; }
+}
