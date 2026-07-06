@@ -18,6 +18,9 @@ function isBossUser(username) {
 // Passwords are NOT stored on the client. Authentication is server-side (GAS)
 // via token-based sessions. See login() / apiCall() / restoreSession().
 
+// Must match the ?v= on app.js/app.css in index.html and CACHE_NAME in sw.js.
+const APP_VERSION = '82';
+
 const CONFIG = {
   API_URL: localStorage.getItem('shiaim_api_url') || '',
 
@@ -1844,6 +1847,9 @@ function wireEvents() {
     document.getElementById('show-password-login').classList.add('hidden');
   });
 
+  // Manual escape hatch for users stuck on a stale cached version
+  document.getElementById('force-refresh-btn')?.addEventListener('click', () => forceVersionRefresh(true));
+
   document.getElementById('login-form').addEventListener('submit', async e => {
     e.preventDefault();
     const username = document.getElementById('username').value;
@@ -3414,10 +3420,59 @@ async function init() {
     initGoogleSignIn();
   }
 
-  // Register service worker
+  // Register service worker (versioned URL so a new deploy always installs a new SW)
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js?v=' + APP_VERSION).catch(() => {});
   }
+
+  // Detect users stuck on a stale cached version and self-heal.
+  checkAppVersion();
+}
+
+// ================================================================
+// VERSION REFRESH (stale cache / service worker recovery)
+// ================================================================
+
+// Fetch the live index.html (bypassing HTTP + SW caches) and compare its
+// asset version to the APP_VERSION baked into this script. A mismatch means
+// this client is running a stale copy — clean up and reload once.
+async function checkAppVersion() {
+  try {
+    const res = await fetch('./index.html?vercheck=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const html = await res.text();
+    const m = html.match(/app\.js\?v=([\w.-]+)/);
+    if (!m) return;
+    const serverVersion = m[1];
+    if (serverVersion === APP_VERSION) {
+      sessionStorage.removeItem('shiaim_ver_refreshed');
+      return;
+    }
+    // Refresh at most once per session to avoid a reload loop.
+    if (sessionStorage.getItem('shiaim_ver_refreshed') === serverVersion) return;
+    sessionStorage.setItem('shiaim_ver_refreshed', serverVersion);
+    await forceVersionRefresh(false);
+  } catch (e) { /* offline or fetch failed — never block the app */ }
+}
+
+// Unregister every service worker, delete every cache, then do a full reload.
+// Safe: touches only caching machinery, never app data or the session token.
+async function forceVersionRefresh(manual = true) {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister().catch(() => {})));
+    }
+  } catch (e) {}
+  try {
+    if (window.caches && caches.keys) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k).catch(() => {})));
+    }
+  } catch (e) {}
+  if (manual) { try { sessionStorage.removeItem('shiaim_ver_refreshed'); } catch (e) {} }
+  // Cache-busting query so the browser refetches index.html from the network.
+  location.replace(location.pathname + '?fresh=' + Date.now());
 }
 
 document.addEventListener('DOMContentLoaded', init);

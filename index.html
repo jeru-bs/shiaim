@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="שיאים">
   <title>התנהלות שוטפת — שיאים</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="app.css?v=81">
+  <link rel="stylesheet" href="app.css?v=82">
   <!-- Google Identity Services (Google Sign-In, 8A.1) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -53,6 +53,8 @@
 
     <!-- Password login kept as a hidden fallback (8A.1) -->
     <button type="button" id="show-password-login" class="login-fallback-link hidden">כניסה עם סיסמה</button>
+    <!-- Escape hatch for users stuck on a stale cached version -->
+    <button type="button" id="force-refresh-btn" class="login-fallback-link" title="ניקוי גרסה ישנה וטעינה מחדש">רענון גרסה</button>
     <form class="login-form hidden" id="login-form" autocomplete="off">
       <div class="input-group">
         <input type="text" id="username" placeholder="שם משתמש" autocomplete="username" />
@@ -576,6 +578,6 @@
   </div>
 </div>
 
-<script src="app.js?v=81"></script>
+<script src="app.js?v=82"></script>
 </body>
 </html>
