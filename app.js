@@ -59,7 +59,7 @@ const S = {
   // An empty-but-successful fetch still counts as loaded; a failed fetch does not.
   loaded: { clients: false, ideas: false, manufacturers: false, products: false },
   // Office schedule wing (7A.2) — month view state, cached per YYYY-MM
-  schedule: { month: null, eventsByMonth: {}, loadedMonths: {}, needsSetup: false },
+  schedule: { month: null, eventsByMonth: {}, loadedMonths: {}, needsSetup: false, typeFilter: '' },
   panelManufacturerId:  null,
   currentWing:          null,
   productsSubTab:       'manufacturers',
@@ -2175,7 +2175,10 @@ function renderScheduleGrid() {
   }
 
   const loaded = !!S.schedule.loadedMonths[key];
-  const events = S.schedule.eventsByMonth[key] || [];
+  const allEvents = S.schedule.eventsByMonth[key] || [];
+  // Type filter (7A.4) — frontend-only, applied on already-loaded events
+  const filter = S.schedule.typeFilter || '';
+  const events = filter ? allEvents.filter(ev => (ev.type || 'office') === filter) : allEvents;
 
   // spread each event over the days it covers (dates only)
   const byDay = {};
@@ -2206,22 +2209,49 @@ function renderScheduleGrid() {
     cells += `
       <div class="sched-day${inMonth ? '' : ' out'}${k === todayKey ? ' today' : ''}" data-date="${k}">
         <span class="sched-day-num">${d.getDate()}</span>
-        ${shown.map(ev => `
-          <span class="sched-ev" data-type="${escHtml(ev.type || 'office')}" data-evid="${escHtml(ev.id)}" title="${escHtml(ev.title)}${ev.description ? ' — ' + escHtml(ev.description) : ''}">
+        ${shown.map(ev => {
+          const timeRange = ev.allDay ? 'כל היום' : String(ev.start).slice(11, 16) + '–' + String(ev.end).slice(11, 16);
+          return `
+          <span class="sched-ev" data-type="${escHtml(ev.type || 'office')}" data-evid="${escHtml(ev.id)}" title="${escHtml(ev.title)} (${timeRange})${ev.description ? ' — ' + escHtml(ev.description) : ''}">
             <span class="sched-ev-dot"></span>
             <span class="sched-ev-text">${ev.allDay ? '' : `<span class="sched-ev-time">${String(ev.start).slice(11, 16)}</span> `}${escHtml(ev.title)}</span>
-          </span>`).join('')}
-        ${dayEvents.length > 3 ? `<span class="sched-more">+${dayEvents.length - 3}</span>` : ''}
+          </span>`;
+        }).join('')}
+        ${dayEvents.length > 3 ? `<span class="sched-more">‏+${dayEvents.length - 3} נוספים</span>` : ''}
       </div>`;
   }
 
+  // Legend doubles as the type filter (7A.4) + quiet calendar-status chip
+  const TYPE_LABELS = [
+    ['', 'הכול'], ['office', 'אירוע משרד'], ['meeting', 'פגישה'], ['task', 'משימה'],
+    ['reminder', 'תזכורת'], ['avail-aharon', 'זמינות אהרן'], ['avail-yakov', 'זמינות יעקב']
+  ];
+  const legend = `
+    <div class="sched-legend">
+      ${TYPE_LABELS.map(t => `
+        <button class="sched-legend-item${filter === t[0] ? ' active' : ''}" data-type="${t[0]}">
+          ${t[0] ? '<span class="sched-ev-dot"></span>' : ''}${t[1]}
+        </button>`).join('')}
+      ${loaded ? '<span class="sched-cal-status"><span class="sched-status-dot"></span>יומן משרד מחובר</span>' : ''}
+    </div>`;
+
   wrap.innerHTML = `
+    ${legend}
     <div class="sched-panel">
       <div class="sched-dow-row">${dows.map(x => `<span>${x}</span>`).join('')}</div>
-      <div class="sched-grid">${cells}</div>
+      <div class="sched-grid${loaded ? '' : ' loading'}">${cells}</div>
+      ${loaded && allEvents.length === 0 ? '<div class="sched-empty-note">אין אירועים בחודש זה — לחיצה על יום תיצור אירוע חדש</div>' : ''}
+      ${loaded && allEvents.length > 0 && events.length === 0 ? '<div class="sched-empty-note">אין אירועים מהסוג שנבחר בחודש זה</div>' : ''}
       ${loaded ? '' : '<div class="sched-loading">טוען אירועים…</div>'}
     </div>`;
 
+  // Legend filter clicks (frontend-only, no server call)
+  wrap.querySelectorAll('.sched-legend-item').forEach(el => {
+    el.addEventListener('click', () => {
+      S.schedule.typeFilter = el.dataset.type || '';
+      renderScheduleGrid();
+    });
+  });
   // Day click → create on that date; event click → edit (7A.3)
   wrap.querySelectorAll('.sched-day').forEach(el => {
     el.addEventListener('click', () => schedOpenEventModal(el.dataset.date, null));

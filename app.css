@@ -1738,17 +1738,85 @@ a { text-decoration: none; color: inherit; }
 .sched-ev-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--text-muted); }
 .sched-ev-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .sched-ev-time { color: var(--text-muted); font-variant-numeric: tabular-nums; }
-/* Quiet per-type dots — same muted language as the projects grid */
-.sched-ev[data-type="office"]   .sched-ev-dot { background: #4E5C82; }
-.sched-ev[data-type="meeting"]  .sched-ev-dot { background: #4A6DA8; }
-.sched-ev[data-type="task"]     .sched-ev-dot { background: var(--warning); }
-.sched-ev[data-type="reminder"] .sched-ev-dot { background: #8A93A8; }
-.sched-ev[data-type="avail-aharon"] .sched-ev-dot { background: #2E8578; }
-.sched-ev[data-type="avail-yakov"]  .sched-ev-dot { background: #A98B3E; }
-/* Availability reads as a soft day-state strip, not a point event */
-.sched-ev[data-type="avail-aharon"] { background: #E9F2F1; }
-.sched-ev[data-type="avail-yakov"]  { background: #F6F1E3; }
-.sched-more { font-size: 0.68rem; color: var(--text-muted); padding-inline-start: 12px; }
+/* Quiet per-type dots — attribute-keyed so the legend shares the exact colors (7A.4) */
+[data-type="office"]   .sched-ev-dot { background: #4E5C82; }
+[data-type="meeting"]  .sched-ev-dot { background: #4A6DA8; }
+[data-type="task"]     .sched-ev-dot { background: var(--warning); }
+[data-type="reminder"] .sched-ev-dot { background: #8A93A8; }
+[data-type="avail-aharon"] .sched-ev-dot { background: #2E8578; }
+[data-type="avail-yakov"]  .sched-ev-dot { background: #A98B3E; }
+
+/* Availability = a soft day-state strip, not a point event (7A.4 polish):
+   full-width tint + person-colored edge line, no dot */
+.sched-ev[data-type^="avail-"] {
+  border-inline-start: 3px solid var(--border-strong);
+  padding-inline-start: 5px;
+  border-radius: 4px 0 0 4px;
+}
+.sched-ev[data-type^="avail-"] .sched-ev-dot { display: none; }
+.sched-ev[data-type="avail-aharon"] { background: #E9F2F1; border-inline-start-color: #2E8578; }
+.sched-ev[data-type="avail-yakov"]  { background: #F6F1E3; border-inline-start-color: #A98B3E; }
+.sched-ev[data-type^="avail-"] .sched-ev-text { color: #43524E; }
+.sched-ev[data-type="avail-yakov"] .sched-ev-text { color: #5E5334; }
+
+.sched-more {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  padding: 0 6px;
+  align-self: flex-start;
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+
+/* Legend / type filter bar (7A.4) */
+.sched-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+.sched-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-sec);
+  font-size: 0.74rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+.sched-legend-item:hover { background: var(--surface-2); }
+.sched-legend-item.active {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--ink);
+  font-weight: 600;
+}
+.sched-legend-item .sched-ev-dot { width: 7px; height: 7px; }
+.sched-cal-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-inline-start: auto;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.sched-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
+
+.sched-grid.loading { opacity: 0.55; pointer-events: none; }
+.sched-empty-note {
+  padding: 0.85rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--border);
+}
 /* 7A.3 — clickable calendar */
 .sched-day { cursor: pointer; transition: background var(--transition); }
 .sched-day:hover { background: var(--surface-2); }
