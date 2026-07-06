@@ -2654,7 +2654,7 @@ function renderManufacturersList() {
   if (!S.manufacturers.length) {
     c.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">🏭</div>
+        <div class="empty-icon ui-icon">${ICONS.factory}</div>
         <p>אין יצרנים עדיין</p>
       </div>`;
     return;
@@ -2663,9 +2663,15 @@ function renderManufacturersList() {
   c.innerHTML = `
     <div class="wing-list">
       ${S.manufacturers.map(m => `
-        <div class="wing-item" onclick="openManufacturerPanel('${escHtml(m.id)}')">
-          <div class="wing-item-name">${escHtml(m.name)}</div>
-          <div class="wing-item-sub">${escHtml(m.contact?.person || '')}${m.contact?.phone ? ' · ' + escHtml(m.contact.phone) : ''}</div>
+        <div class="wing-row" onclick="openManufacturerPanel('${escHtml(m.id)}')">
+          <span class="wing-row-avatar">${projectInitial(m.name)}</span>
+          <span class="wing-row-main">
+            <span class="wing-row-title">${escHtml(m.name)}</span>
+            <span class="wing-row-meta">
+              ${m.contact?.person ? `<span class="wing-meta-item">${escHtml(m.contact.person)}</span>` : ''}
+              ${m.contact?.phone ? `<span class="wing-meta-item">${icon('phone')} ${escHtml(m.contact.phone)}</span>` : ''}
+            </span>
+          </span>
         </div>`).join('')}
     </div>`;
 }
@@ -3273,14 +3279,18 @@ function renderProductsList() {
   const dl = document.getElementById('products-datalist');
   if (dl) dl.innerHTML = S.products.map(p => '<option value="' + escHtml(p.name) + '">').join('');
   if (!S.products.length) {
-    c.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><p>אין מוצרים עדיין</p></div>';
+    c.innerHTML = '<div class="empty-state"><div class="empty-icon ui-icon">' + ICONS.products + '</div><p>אין מוצרים עדיין</p></div>';
     return;
   }
   c.innerHTML = '<div class="wing-list">' + S.products.map(p =>
-    '<div class="wing-item" onclick="openProductPanel(\'' + escHtml(p.id) + '\')">' +
-    '<div class="wing-item-name">' + escHtml(p.name) + '</div>' +
-    '<div class="wing-item-sub">' + escHtml(p.manufacturerName || '') +
-    (p.barcode ? ' · ' + escHtml(p.barcode) : '') + '</div></div>'
+    '<div class="wing-row" onclick="openProductPanel(\'' + escHtml(p.id) + '\')">' +
+    '<span class="wing-row-avatar">' + projectInitial(p.name) + '</span>' +
+    '<span class="wing-row-main">' +
+    '<span class="wing-row-title">' + escHtml(p.name) + '</span>' +
+    '<span class="wing-row-meta">' +
+    (p.manufacturerName ? '<span class="wing-meta-item">' + escHtml(p.manufacturerName) + '</span>' : '') +
+    (p.barcode ? '<span class="wing-meta-item">מק״ט ' + escHtml(p.barcode) + '</span>' : '') +
+    '</span></span></div>'
   ).join('') + '</div>';
 }
 
