@@ -19,7 +19,7 @@ function isBossUser(username) {
 // via token-based sessions. See login() / apiCall() / restoreSession().
 
 // Must match the ?v= on app.js/app.css in index.html and CACHE_NAME in sw.js.
-const APP_VERSION = '82';
+const APP_VERSION = '83';
 
 const CONFIG = {
   API_URL: localStorage.getItem('shiaim_api_url') || '',
@@ -317,6 +317,19 @@ async function logChange(type, projectId, projectName, details) {
 // ── Google Sign-In (8A.1) ──
 let _googleInited = false;
 
+// The GSI script loads async — on slow (mobile) connections it may not be
+// ready when init runs. Poll for it instead of falling back immediately.
+function waitForGis(timeoutMs = 10000) {
+  return new Promise(resolve => {
+    const start = Date.now();
+    (function poll() {
+      if (window.google && google.accounts && google.accounts.id) return resolve(true);
+      if (Date.now() - start >= timeoutMs) return resolve(false);
+      setTimeout(poll, 250);
+    })();
+  });
+}
+
 async function initGoogleSignIn() {
   const area = document.getElementById('google-signin-area');
   const fallbackLink = document.getElementById('show-password-login');
@@ -326,7 +339,9 @@ async function initGoogleSignIn() {
     clientId = (cfg && cfg.clientId) || '';
   } catch (e) { /* endpoint not reachable — fall back to password */ }
 
-  if (!clientId || !window.google || !google.accounts || !google.accounts.id) {
+  const gisReady = clientId ? await waitForGis() : false;
+
+  if (!clientId || !gisReady) {
     // Google not configured/available yet — reveal the password form as the usable path
     if (area) area.classList.add('hidden');
     document.getElementById('login-form').classList.remove('hidden');
@@ -3407,6 +3422,10 @@ async function submitAddManufacturer() {
 // ================================================================
 async function init() {
   wireEvents();
+
+  // Show which JS version is actually running (diagnostic for stale caches)
+  const verEl = document.getElementById('app-version-label');
+  if (verEl) verEl.textContent = 'גרסה ' + APP_VERSION;
 
   // Migration: purge any legacy client-side credentials / session.
   try { localStorage.removeItem('shiaim_passwords'); } catch (e) {}

@@ -1,5 +1,5 @@
-// v82 — network-first shell (no pinned/old-commit HTML)
-const CACHE_NAME = 'shiaim-v82';
+// v83 — network-first shell (no pinned/old-commit HTML)
+const CACHE_NAME = 'shiaim-v83';
 
 // Install: activate immediately, no stale precache.
 self.addEventListener('install', e => {
