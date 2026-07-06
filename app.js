@@ -90,6 +90,8 @@ const ICONS = {
   clock:    ICON_SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   alert:    ICON_SVG('<path d="M12 3.5L22 21H2L12 3.5z"/><path d="M12 10v4.5M12 17.5h.01"/>'),
   check:    ICON_SVG('<path d="M20 6L9 17l-5-5"/>'),
+  phone:    ICON_SVG('<path d="M5 3h3.2l1.8 4.6-2.1 1.6a12.5 12.5 0 0 0 5.9 5.9l1.6-2.1L20 14.8V18a2 2 0 0 1-2.2 2A15.5 15.5 0 0 1 3 5.2 2 2 0 0 1 5 3z"/>'),
+  mail:     ICON_SVG('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7.5l9 6 9-6"/>'),
 };
 
 function icon(name, cls = '') {
@@ -1979,7 +1981,7 @@ async function loadAndRenderClientsWing() {
   wc.innerHTML = `
     <div class="wing-header">
       <button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>
-      <h2 class="wing-title">${icon('clients')} לקוחות</h2>
+      <h2 class="wing-title">${icon('clients')} לקוחות <span class="wing-count" id="clients-wing-count"></span></h2>
       <button class="btn-gold btn-sm" onclick="openAddClientModal()">+ לקוח</button>
     </div>
     <div class="clients-list" id="clients-list">
@@ -2005,17 +2007,23 @@ async function loadAndRenderClientsWing() {
 function renderClientsList() {
   const list = document.getElementById('clients-list');
   if (!list) return;
+  const cnt = document.getElementById('clients-wing-count');
+  if (cnt) cnt.textContent = S.clients.length ? `(${S.clients.length})` : '';
   if (!S.clients.length) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-icon">👤</div><p>אין לקוחות עדיין</p></div>';
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon ui-icon">${ICONS.clients}</div><p>אין לקוחות עדיין</p></div>`;
     return;
   }
   list.innerHTML = S.clients.map(c => `
-    <div class="wing-item client-row" onclick="openClientPanel('${escHtml(c.id)}')">
-      <div class="wing-item-title">${escHtml(c.name)}</div>
-      <div class="wing-item-meta">
-        ${c.phone ? `<span>📞 ${escHtml(c.phone)}</span>` : ''}
-        ${c.email ? `<span>✉️ ${escHtml(c.email)}</span>` : ''}
-      </div>
+    <div class="wing-row" onclick="openClientPanel('${escHtml(c.id)}')">
+      <span class="wing-row-avatar">${projectInitial(c.name)}</span>
+      <span class="wing-row-main">
+        <span class="wing-row-title">${escHtml(c.name)}</span>
+        <span class="wing-row-meta">
+          ${c.phone ? `<span class="wing-meta-item">${icon('phone')} ${escHtml(c.phone)}</span>` : ''}
+          ${c.email ? `<span class="wing-meta-item">${icon('mail')} ${escHtml(c.email)}</span>` : ''}
+          ${c.companyId ? `<span class="wing-meta-item">ח.פ. ${escHtml(c.companyId)}</span>` : ''}
+        </span>
+      </span>
     </div>`).join('');
 }
 
@@ -2296,7 +2304,7 @@ async function loadAndRenderIdeasWing() {
   wc.innerHTML = `
     <div class="wing-header">
       <button class="btn-wing-back" onclick="openWing(null)">← חזרה</button>
-      <h2 class="wing-title">${icon('ideas')} רעיונות</h2>
+      <h2 class="wing-title">${icon('ideas')} רעיונות <span class="wing-count" id="ideas-wing-count"></span></h2>
       <button class="btn-gold btn-sm" onclick="openAddIdeaModal()">+ רעיון</button>
     </div>
     <div class="ideas-list" id="ideas-list">
@@ -2322,20 +2330,23 @@ async function loadAndRenderIdeasWing() {
 function renderIdeasList() {
   const list = document.getElementById('ideas-list');
   if (!list) return;
+  const cnt = document.getElementById('ideas-wing-count');
+  if (cnt) cnt.textContent = S.ideas.length ? `(${S.ideas.length})` : '';
   if (!S.ideas.length) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-icon">💡</div><p>אין רעיונות עדיין</p></div>';
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon ui-icon">${ICONS.ideas}</div><p>אין רעיונות עדיין</p></div>`;
     return;
   }
   list.innerHTML = S.ideas.map(idea => `
-    <div class="wing-item" onclick="openIdeaPanel('${escHtml(idea.id)}')">
-      <div class="wing-item-title">
-        ${escHtml(idea.name)}
-        ${idea.convertedProjectId ? ' <span style="font-size:0.75rem;color:var(--green)">✅ הפך לפרויקט</span>' : ''}
-      </div>
-      <div class="wing-item-meta">
-        ${idea.stage    ? `<span>${escHtml(idea.stage)}</span>`    : ''}
-        ${idea.category ? `<span>${escHtml(idea.category)}</span>` : ''}
-      </div>
+    <div class="wing-row" onclick="openIdeaPanel('${escHtml(idea.id)}')">
+      <span class="wing-row-avatar">${projectInitial(idea.name)}</span>
+      <span class="wing-row-main">
+        <span class="wing-row-title">${escHtml(idea.name)}</span>
+        <span class="wing-row-meta">
+          ${idea.stage    ? `<span class="wing-meta-item">${escHtml(idea.stage)}</span>`    : ''}
+          ${idea.category ? `<span class="wing-meta-item">${escHtml(idea.category)}</span>` : ''}
+        </span>
+      </span>
+      ${idea.convertedProjectId ? `<span class="wing-row-status converted"><span class="status-dot"></span>הפך לפרויקט</span>` : ''}
     </div>`).join('');
 }
 
