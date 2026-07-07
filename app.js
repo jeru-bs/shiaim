@@ -19,7 +19,7 @@ function isBossUser(username) {
 // via token-based sessions. See login() / apiCall() / restoreSession().
 
 // Must match the ?v= on app.js/app.css in index.html and CACHE_NAME in sw.js.
-const APP_VERSION = '91';
+const APP_VERSION = '92';
 
 // Stable Web App deployment URL (same deployment id across script versions).
 // Baked in as the default so new devices need no manual setup; a value in

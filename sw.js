@@ -1,5 +1,5 @@
-// v91 — network-first shell (no pinned/old-commit HTML)
-const CACHE_NAME = 'shiaim-v91';
+// v92 — network-first shell (no pinned/old-commit HTML)
+const CACHE_NAME = 'shiaim-v92';
 
 // Install: activate immediately, no stale precache.
 self.addEventListener('install', e => {
@@ -18,17 +18,11 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const req = e.request;
 
-  // Backend API (Google Apps Script): network only, JSON offline fallback.
-  if (req.url.includes('script.google.com')) {
-    e.respondWith(
-      fetch(req).catch(() => new Response(JSON.stringify({ error: 'offline' }), {
-        headers: { 'Content-Type': 'application/json' }
-      }))
-    );
-    return;
-  }
-
-  // Only manage same-origin GET requests; everything else passes through.
+  // Only manage same-origin GET. Everything else — in particular the backend
+  // API calls (cross-origin POST to script.google.com) — must go straight to
+  // the network untouched. Previously the SW re-issued those POSTs itself;
+  // on some browsers re-fetching a POST body failed and the SW swallowed it as
+  // "offline", which surfaced as "שרת ההגדרות לא זמין" and blocked login.
   let sameOrigin = false;
   try { sameOrigin = new URL(req.url).origin === self.location.origin; } catch (err) {}
   if (req.method !== 'GET' || !sameOrigin) return;
