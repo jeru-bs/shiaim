@@ -2681,6 +2681,30 @@ a { text-decoration: none; color: inherit; }
   border-radius: 6px;
 }
 
+/* ── Google Sign-In button (8B.2 redirect flow, our own button) ── */
+.btn-google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+  padding: 0.7rem 1rem;
+  background: #fff;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+  border-radius: 24px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), box-shadow var(--transition);
+}
+.btn-google:hover { background: #f7f8f8; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+.btn-google:active { background: #f1f3f4; }
+.btn-google .btn-google-icon { display: inline-flex; flex-shrink: 0; }
+
 /* ================================================================
    MOBILE LAYOUT (Pulse 8B) — every rule scoped to ≤640px.
    Desktop (>640px) is untouched by design.

@@ -19,7 +19,7 @@ function isBossUser(username) {
 // via token-based sessions. See login() / apiCall() / restoreSession().
 
 // Must match the ?v= on app.js/app.css in index.html and CACHE_NAME in sw.js.
-const APP_VERSION = '87';
+const APP_VERSION = '88';
 
 // Stable Web App deployment URL (same deployment id across script versions).
 // Baked in as the default so new devices need no manual setup; a value in
@@ -319,90 +319,89 @@ async function logChange(type, projectId, projectName, details) {
 // AUTH
 // ================================================================
 
-// ── Google Sign-In (8A.1) ──
-let _googleInited = false;
+// ── Google Sign-In (8B.2): redirect-based OAuth (robust on mobile) ──
+// The GSI iframe button depends on third-party cookies to accounts.google.com,
+// which many mobile browsers and in-app webviews block — the button then just
+// fails to appear. A full-page redirect to Google's OAuth endpoint needs no
+// third-party cookies and works in any browser that can reach Google. The
+// returned id_token is verified server-side exactly as before
+// (signature / aud / iss / exp / email), so the backend is unchanged.
 
-// The GSI script loads async — on slow (mobile) connections it may not be
-// ready when init runs. Poll for it instead of falling back immediately.
-function waitForGis(timeoutMs = 10000) {
-  return new Promise(resolve => {
-    const start = Date.now();
-    (function poll() {
-      if (window.google && google.accounts && google.accounts.id) return resolve(true);
-      if (Date.now() - start >= timeoutMs) return resolve(false);
-      setTimeout(poll, 250);
-    })();
+const GOOGLE_AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
+
+// Redirect URI must EXACTLY match an "Authorized redirect URI" on the OAuth
+// client. This resolves to the app's directory, e.g. https://jeru-bs.github.io/shiaim/
+function googleRedirectUri() {
+  return location.origin + location.pathname.replace(/[^/]*$/, '');
+}
+
+function randomToken(bytes = 16) {
+  const a = new Uint8Array(bytes);
+  crypto.getRandomValues(a);
+  return Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Kick off the top-level redirect to Google's consent/account chooser.
+function startGoogleRedirect(clientId) {
+  const nonce = randomToken();
+  const state = randomToken();
+  sessionStorage.setItem('g_nonce', nonce);
+  sessionStorage.setItem('g_state', state);
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: googleRedirectUri(),
+    response_type: 'id_token',
+    scope: 'openid email profile',
+    nonce: nonce,
+    state: state,
+    prompt: 'select_account'
   });
+  location.href = GOOGLE_AUTH_ENDPOINT + '?' + params.toString();
 }
 
-async function initGoogleSignIn() {
-  const area = document.getElementById('google-signin-area');
-  const fallbackLink = document.getElementById('show-password-login');
+// On return from Google the id_token arrives in the URL fragment.
+// Returns true if a redirect result was present (and consumed).
+async function handleGoogleRedirectResult() {
+  const hash = location.hash || '';
+  if (hash.indexOf('id_token=') === -1 && hash.indexOf('error=') === -1) return false;
+  const p = new URLSearchParams(hash.replace(/^#/, ''));
+  // Strip the fragment immediately so a refresh can't replay the token.
+  history.replaceState(null, '', location.pathname + location.search);
 
-  // Config fetch can fail transiently (GAS cold start / flaky mobile network) —
-  // retry a couple of times before giving up on the Google path.
-  let clientId = '', cfgError = '';
-  for (let attempt = 1; attempt <= 3 && !clientId; attempt++) {
-    try {
-      const cfg = await apiCall('getAuthConfig');
-      clientId = (cfg && cfg.clientId) || '';
-    } catch (e) {
-      cfgError = (e && e.message) || 'network';
-      if (attempt < 3) await new Promise(r => setTimeout(r, 1500 * attempt));
+  const errEl = document.getElementById('login-error');
+  if (p.get('error')) {
+    if (errEl) errEl.textContent = 'ההתחברות עם Google נכשלה (' + p.get('error') + ')';
+    return true;
+  }
+  const idToken = p.get('id_token');
+  if (!idToken) return true;
+
+  // CSRF: state must match what we stored before leaving.
+  const expectedState = sessionStorage.getItem('g_state');
+  sessionStorage.removeItem('g_state');
+  if (expectedState && p.get('state') !== expectedState) {
+    if (errEl) errEl.textContent = 'ההתחברות עם Google נכשלה (state)';
+    return true;
+  }
+  // Defence-in-depth nonce check (server still fully verifies the token).
+  const expectedNonce = sessionStorage.getItem('g_nonce');
+  sessionStorage.removeItem('g_nonce');
+  try {
+    const claims = JSON.parse(atob(idToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (expectedNonce && claims.nonce && claims.nonce !== expectedNonce) {
+      if (errEl) errEl.textContent = 'ההתחברות עם Google נכשלה (nonce)';
+      return true;
     }
-  }
+  } catch (e) { /* opaque token — let the server be the authority */ }
 
-  // Wait for the async GSI script; if it never arrived (load error on slow
-  // or filtered connections), re-inject it once and wait again.
-  let gisReady = clientId ? await waitForGis() : false;
-  if (clientId && !gisReady) {
-    const s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client';
-    s.async = true;
-    document.head.appendChild(s);
-    gisReady = await waitForGis();
-  }
-
-  if (!clientId || !gisReady) {
-    // Google not configured/available yet — reveal the password form as the usable path
-    if (area) area.classList.add('hidden');
-    document.getElementById('login-form').classList.remove('hidden');
-    if (fallbackLink) fallbackLink.classList.add('hidden');
-    // Surface WHY next to the version badge so remote debugging is possible.
-    const verEl = document.getElementById('app-version-label');
-    if (verEl) {
-      const reason = !clientId
-        ? 'שרת ההגדרות לא זמין' + (cfgError ? ' (' + cfgError + ')' : '')
-        : 'סקריפט Google לא נטען';
-      verEl.textContent = 'גרסה ' + APP_VERSION + ' · ' + reason;
-    }
-    return;
-  }
-
-  if (area) area.classList.remove('hidden');
-  if (fallbackLink) fallbackLink.classList.remove('hidden');   // keep password reachable as fallback
-
-  if (!_googleInited) {
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: handleGoogleCredential,
-      auto_select: false,
-      cancel_on_tap_outside: true
-    });
-    _googleInited = true;
-  }
-  const btn = document.getElementById('g_id_signin');
-  if (btn) {
-    btn.innerHTML = '';
-    google.accounts.id.renderButton(btn, { theme: 'outline', size: 'large', type: 'standard', shape: 'pill', text: 'signin_with', locale: 'he', width: 260 });
-  }
+  await loginWithGoogleToken(idToken);
+  return true;
 }
 
-// Global callback for Google Identity Services
-async function handleGoogleCredential(response) {
+// Exchange a verified Google ID token for an app session.
+async function loginWithGoogleToken(idToken) {
   const errEl = document.getElementById('login-error');
   if (errEl) errEl.textContent = '';
-  const idToken = response && response.credential;
   if (!idToken) { if (errEl) errEl.textContent = 'ההתחברות עם Google נכשלה'; return; }
   showSpinner(true);
   try {
@@ -427,6 +426,43 @@ async function handleGoogleCredential(response) {
     if (errEl) errEl.textContent = 'שגיאת התחברות';
   } finally {
     showSpinner(false);
+  }
+}
+
+async function initGoogleSignIn() {
+  const area = document.getElementById('google-signin-area');
+  const fallbackLink = document.getElementById('show-password-login');
+  const btn = document.getElementById('google-redirect-btn');
+
+  // Config fetch can fail transiently (GAS cold start / flaky mobile network) —
+  // retry a few times before giving up on the Google path.
+  let clientId = '', cfgError = '';
+  for (let attempt = 1; attempt <= 3 && !clientId; attempt++) {
+    try {
+      const cfg = await apiCall('getAuthConfig');
+      clientId = (cfg && cfg.clientId) || '';
+    } catch (e) {
+      cfgError = (e && e.message) || 'network';
+      if (attempt < 3) await new Promise(r => setTimeout(r, 1500 * attempt));
+    }
+  }
+
+  if (!clientId) {
+    // Backend unreachable — reveal the password form as the usable path.
+    if (area) area.classList.add('hidden');
+    document.getElementById('login-form').classList.remove('hidden');
+    if (fallbackLink) fallbackLink.classList.add('hidden');
+    const verEl = document.getElementById('app-version-label');
+    if (verEl) verEl.textContent = 'גרסה ' + APP_VERSION + ' · שרת ההגדרות לא זמין' + (cfgError ? ' (' + cfgError + ')' : '');
+    return;
+  }
+
+  // Google available: show our own button (no third-party iframe), keep password reachable.
+  if (area) area.classList.remove('hidden');
+  if (fallbackLink) fallbackLink.classList.remove('hidden');
+  if (btn && !btn._wired) {
+    btn.addEventListener('click', () => startGoogleRedirect(clientId));
+    btn._wired = true;
   }
 }
 
@@ -3466,6 +3502,8 @@ async function init() {
     loadAll();
   } else {
     showScreen('login-screen');
+    // If we're returning from a Google redirect, consume the token first.
+    await handleGoogleRedirectResult();
     initGoogleSignIn();
   }
 
