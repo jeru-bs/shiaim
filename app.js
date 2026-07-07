@@ -19,7 +19,7 @@ function isBossUser(username) {
 // via token-based sessions. See login() / apiCall() / restoreSession().
 
 // Must match the ?v= on app.js/app.css in index.html and CACHE_NAME in sw.js.
-const APP_VERSION = '90';
+const APP_VERSION = '91';
 
 // Stable Web App deployment URL (same deployment id across script versions).
 // Baked in as the default so new devices need no manual setup; a value in
@@ -429,45 +429,71 @@ async function loginWithGoogleToken(idToken) {
   }
 }
 
+let _googleClientId = '';
+
+// Fetch the OAuth client id from the backend (cached), retrying transient
+// failures (GAS cold start / flaky mobile network).
+async function fetchGoogleClientId() {
+  if (_googleClientId) return _googleClientId;
+  for (let attempt = 1; attempt <= 3 && !_googleClientId; attempt++) {
+    try {
+      const cfg = await apiCall('getAuthConfig');
+      _googleClientId = (cfg && cfg.clientId) || '';
+    } catch (e) {
+      if (attempt < 3) await new Promise(r => setTimeout(r, 1200 * attempt));
+    }
+  }
+  return _googleClientId;
+}
+
+// Wire the Google button ONCE, immediately, so it responds from first paint.
+// If the client id hasn't loaded yet, fetch it on tap (with a spinner) and
+// then redirect — the button is never a dead element waiting on the network.
+function wireGoogleButton() {
+  const btn = document.getElementById('google-redirect-btn');
+  if (!btn || btn._wired) return;
+  btn._wired = true;
+  btn.addEventListener('click', async () => {
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.textContent = '';
+    let cid = _googleClientId;
+    if (!cid) {
+      showSpinner(true);
+      cid = await fetchGoogleClientId();
+      showSpinner(false);
+    }
+    if (cid) {
+      startGoogleRedirect(cid);
+    } else {
+      // Backend unreachable — offer the admin escape hatch instead of a dead end.
+      revealAdminLogin();
+      if (errEl) errEl.textContent = 'שרת ההגדרות לא זמין — נסה שוב';
+    }
+  });
+}
+
 async function initGoogleSignIn() {
   const area = document.getElementById('google-signin-area');
   const fallbackLink = document.getElementById('show-password-login');
-  const btn = document.getElementById('google-redirect-btn');
 
-  // Config fetch can fail transiently (GAS cold start / flaky mobile network) —
-  // retry a few times before giving up on the Google path.
-  let clientId = '', cfgError = '';
-  for (let attempt = 1; attempt <= 3 && !clientId; attempt++) {
-    try {
-      const cfg = await apiCall('getAuthConfig');
-      clientId = (cfg && cfg.clientId) || '';
-    } catch (e) {
-      cfgError = (e && e.message) || 'network';
-      if (attempt < 3) await new Promise(r => setTimeout(r, 1500 * attempt));
-    }
-  }
-
-  if (!clientId) {
-    // Backend unreachable — reveal the password form so an admin is never
-    // fully locked out (this is also the admin escape hatch's usable path).
-    if (area) area.classList.add('hidden');
-    revealAdminLogin();
-    if (fallbackLink) fallbackLink.classList.add('hidden');
-    const verEl = document.getElementById('app-version-label');
-    if (verEl) verEl.textContent = 'גרסה ' + APP_VERSION + ' · שרת ההגדרות לא זמין' + (cfgError ? ' (' + cfgError + ')' : '');
-    return;
-  }
-
-  // Google is the only normal sign-in path. Password login is disabled for
-  // everyday use and kept solely as a hidden admin escape hatch, reachable via
-  // the ?admin URL — so a Google outage can never lock the admin out.
+  // Google is the only normal sign-in path. The button is wired immediately so
+  // it is responsive even before the config request returns. Password login is
+  // disabled for everyday use and kept only as a hidden admin escape hatch
+  // (?admin), so a Google outage can never lock the admin out.
   if (area) area.classList.remove('hidden');
   if (fallbackLink) fallbackLink.classList.add('hidden');
-  if (btn && !btn._wired) {
-    btn.addEventListener('click', () => startGoogleRedirect(clientId));
-    btn._wired = true;
-  }
+  wireGoogleButton();
   if (isAdminHatch()) revealAdminLogin();
+
+  // Pre-fetch the client id in the background so the redirect is instant on tap.
+  const clientId = await fetchGoogleClientId();
+  if (!clientId) {
+    // Backend unreachable — reveal the admin fallback but keep the Google button
+    // visible so a retry (tap) can still succeed once the network recovers.
+    revealAdminLogin();
+    const verEl = document.getElementById('app-version-label');
+    if (verEl) verEl.textContent = 'גרסה ' + APP_VERSION + ' · שרת ההגדרות לא זמין';
+  }
 }
 
 // Admin escape hatch: password login is hidden unless the URL carries ?admin
