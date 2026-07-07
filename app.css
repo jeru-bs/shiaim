@@ -2792,6 +2792,11 @@ a { text-decoration: none; color: inherit; }
   /* ── Wing screens: header/toolbar wrap, wide tables scroll inside ── */
   .wing-header { flex-wrap: wrap; padding: 0.75rem 1rem; }
   .wing-toolbar { flex-wrap: wrap; }
+  .wing-tiles { flex-wrap: wrap; }
   .contacts-table { overflow-x: auto; }
   .contact-row { min-width: 560px; }
+  .price-table { display: block; overflow-x: auto; }
+  /* Generic list rows already use flex; keep their meta on its own line */
+  .wing-row { flex-wrap: wrap; }
+  .wing-row-meta { width: 100%; }
 }
