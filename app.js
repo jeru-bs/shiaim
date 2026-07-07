@@ -19,7 +19,7 @@ function isBossUser(username) {
 // via token-based sessions. See login() / apiCall() / restoreSession().
 
 // Must match the ?v= on app.js/app.css in index.html and CACHE_NAME in sw.js.
-const APP_VERSION = '88';
+const APP_VERSION = '89';
 
 // Stable Web App deployment URL (same deployment id across script versions).
 // Baked in as the default so new devices need no manual setup; a value in
@@ -448,22 +448,38 @@ async function initGoogleSignIn() {
   }
 
   if (!clientId) {
-    // Backend unreachable — reveal the password form as the usable path.
+    // Backend unreachable — reveal the password form so an admin is never
+    // fully locked out (this is also the admin escape hatch's usable path).
     if (area) area.classList.add('hidden');
-    document.getElementById('login-form').classList.remove('hidden');
+    revealAdminLogin();
     if (fallbackLink) fallbackLink.classList.add('hidden');
     const verEl = document.getElementById('app-version-label');
     if (verEl) verEl.textContent = 'גרסה ' + APP_VERSION + ' · שרת ההגדרות לא זמין' + (cfgError ? ' (' + cfgError + ')' : '');
     return;
   }
 
-  // Google available: show our own button (no third-party iframe), keep password reachable.
+  // Google is the only normal sign-in path. Password login is disabled for
+  // everyday use and kept solely as a hidden admin escape hatch, reachable via
+  // the ?admin URL — so a Google outage can never lock the admin out.
   if (area) area.classList.remove('hidden');
-  if (fallbackLink) fallbackLink.classList.remove('hidden');
+  if (fallbackLink) fallbackLink.classList.add('hidden');
   if (btn && !btn._wired) {
     btn.addEventListener('click', () => startGoogleRedirect(clientId));
     btn._wired = true;
   }
+  if (isAdminHatch()) revealAdminLogin();
+}
+
+// Admin escape hatch: password login is hidden unless the URL carries ?admin
+// (or #admin). This keeps a non-Google way in without advertising it.
+function isAdminHatch() {
+  return /(?:[?&]|#)admin(?:=1)?\b/i.test(location.search + location.hash);
+}
+function revealAdminLogin() {
+  const form = document.getElementById('login-form');
+  if (form) form.classList.remove('hidden');
+  const hint = document.getElementById('admin-login-hint');
+  if (hint) hint.classList.remove('hidden');
 }
 
 async function login(username, password) {
